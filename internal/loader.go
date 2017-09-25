@@ -7,8 +7,8 @@ import (
 
 	"github.com/gedex/inflector"
 
+	"github.com/jennal/xo/models"
 	"github.com/knq/snaker"
-	"github.com/knq/xo/models"
 )
 
 // Loader is the common interface for database drivers that can generate code
@@ -471,7 +471,7 @@ func (tl TypeLoader) LoadRelkind(args *ArgType, relType RelType) (map[string]*Ty
 	for _, ti := range tableList {
 		// create template
 		typeTpl := &Type{
-			Name:    SingularizeIdentifier(ti.TableName),
+			Name:    SingularizeTableName(ti.TableName, args.KeepTablePrefix),
 			Schema:  args.Schema,
 			RelType: relType,
 			Fields:  []*Field{},

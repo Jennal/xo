@@ -10,8 +10,8 @@ import (
 
 	_ "gopkg.in/rana/ora.v4"
 
-	"github.com/knq/xo/internal"
-	"github.com/knq/xo/models"
+	"github.com/jennal/xo/internal"
+	"github.com/jennal/xo/models"
 )
 
 func init() {

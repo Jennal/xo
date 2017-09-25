@@ -222,6 +222,24 @@ func SingularizeIdentifier(s string) string {
 	return snaker.SnakeToCamelIdentifier(s)
 }
 
+// SinguralizeIdentifier will singularize a identifier, returning it in
+// CamelCase.
+func SingularizeTableName(s string, keepPrefix bool) string {
+	prefix := ""
+	if keepPrefix {
+		prefix = strings.ToUpper(s[:strings.IndexRune(s, '_')+1])
+		s = s[len(prefix)-1:]
+	}
+
+	if i := reverseIndexRune(s, '_'); i != -1 {
+		s = s[:i] + "_" + inflector.Singularize(s[i+1:])
+	} else {
+		s = inflector.Singularize(s)
+	}
+
+	return prefix + snaker.SnakeToCamelIdentifier(s)
+}
+
 // TBuf is to hold the executed templates.
 type TBuf struct {
 	TemplateType TemplateType

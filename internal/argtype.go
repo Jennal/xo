@@ -123,6 +123,9 @@ type ArgType struct {
 	// Tags is the list of build tags to add to generated Go files.
 	Tags string `arg:"--tags,help:build tags to add to package header"`
 
+	// KeepTablePrefix toggles keep prefix of table names.
+	KeepTablePrefix bool `arg:"--keep-table-prefix,help:keep prefix of table name"`
+
 	// Path is the output path, as derived from Out.
 	Path string `arg:"-"`
 
