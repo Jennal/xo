@@ -5,9 +5,9 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
-	"github.com/knq/snaker"
 	"github.com/jennal/xo/internal"
 	"github.com/jennal/xo/models"
+	"github.com/knq/snaker"
 )
 
 func init() {
@@ -27,7 +27,18 @@ func init() {
 		IndexList:       models.MyTableIndexes,
 		IndexColumnList: models.MyIndexColumns,
 		QueryColumnList: MyQueryColumns,
+
+		Esc: map[internal.EscType]func(string) string{
+			internal.SchemaEsc: MyEsc,
+			internal.TableEsc:  MyEsc,
+			internal.ColumnEsc: MyEsc,
+		},
 	}
+}
+
+// MyEsc escape schema to `schema`, table to `table`, column to `column`
+func MyEsc(arg string) string {
+	return "`" + arg + "`"
 }
 
 // MySchema retrieves the name of the current schema.
