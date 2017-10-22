@@ -1,5 +1,6 @@
 {{- $short := (shortname .Name "err" "res" "sqlstr" "db" "XOLog") -}}
 {{- $table := (schema .Schema .Table.TableName) -}}
+{{- $reflist := (reflist .) -}}
 {{- if .Comment -}}
 // {{ .Comment }}
 {{- else -}}
@@ -7,7 +8,7 @@
 {{- end }}
 type {{ .Name }} struct {
 {{- range .Fields }}
-	{{ .Name }} {{ retype .Type }} `json:"{{ .Col.ColumnName }}"` // {{ .Col.ColumnName }}
+	{{ .Name }} {{ retype .Type }} `json:"{{ jsonname . }}"` // {{ .Col.ColumnName }} {{ .Col.ColumnComment }}
 {{- end }}
 {{- if .PrimaryKey }}
 
@@ -87,6 +88,15 @@ func ({{ $short }} *{{ .Name }}) Insert(db XODB) error {
 	{{ $short }}._exists = true
 {{ end }}
 
+{{ if $reflist }}
+	// insert ref list
+	{{- range $reflist }}
+		if err := {{ $short }}.{{ .Name }}.Insert(db); err != nil {
+			return err
+		}
+	{{ end }}
+{{ end }}
+
 	return nil
 }
 
@@ -114,7 +124,9 @@ func ({{ $short }} *{{ .Name }}) Insert(db XODB) error {
 			// run query
 			XOLog(sqlstr, {{ fieldnamesmulti .Fields $short .PrimaryKeyFields }}, {{ fieldnames .PrimaryKeyFields $short}})
 			_, err = db.Exec(sqlstr, {{ fieldnamesmulti .Fields $short .PrimaryKeyFields }}, {{ fieldnames .PrimaryKeyFields $short}})
-			return err
+			if err != nil {
+				return err
+			}
 		{{- else }}
 			// sql query
 			const sqlstr = "UPDATE {{ $table }} SET " +
@@ -124,8 +136,21 @@ func ({{ $short }} *{{ .Name }}) Insert(db XODB) error {
 			// run query
 			XOLog(sqlstr, {{ fieldnames .Fields $short .PrimaryKey.Name }}, {{ $short }}.{{ .PrimaryKey.Name }})
 			_, err = db.Exec(sqlstr, {{ fieldnames .Fields $short .PrimaryKey.Name }}, {{ $short }}.{{ .PrimaryKey.Name }})
-			return err
+			if err != nil {
+				return err
+			}
 		{{- end }}
+
+{{ if $reflist }}
+	// update ref list
+	{{- range $reflist }}
+		if err := {{ $short }}.{{ .Name }}.Update(db); err != nil {
+			return err
+		}
+	{{ end }}
+{{ end }}
+
+		return nil
 	}
 
 	// Save saves the {{ .Name }} to the database.
@@ -178,6 +203,15 @@ func ({{ $short }} *{{ .Name }}) Delete(db XODB) error {
 
 	// set deleted
 	{{ $short }}._deleted = true
+
+{{ if $reflist }}
+	// delete ref list
+	{{- range $reflist }}
+		if err := {{ $short }}.{{ .Name }}.Delete(db); err != nil {
+			return err
+		}
+	{{ end }}
+{{ end }}
 
 	return nil
 }

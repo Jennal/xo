@@ -486,7 +486,7 @@ func (tl TypeLoader) LoadRelkind(args *ArgType, relType RelType) (map[string]*Ty
 		}
 
 		// load extra fields
-		err = LoadExtraFields(args, typeTpl)
+		err = LoadTableExtraFields(args, typeTpl)
 		if err != nil {
 			return nil, err
 		}
@@ -541,6 +541,12 @@ func (tl TypeLoader) LoadColumns(args *ArgType, typeTpl *Type) error {
 			Col:  c,
 		}
 		f.Len, f.NilType, f.Type = tl.ParseType(args, c.DataType, !c.NotNull)
+
+		// load column type from comment
+		err := LoadColumnType(args, f)
+		if err != nil {
+			return err
+		}
 
 		// set primary key
 		if c.IsPrimaryKey {

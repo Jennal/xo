@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"text/template"
@@ -32,6 +33,10 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"hascolumn":          a.hascolumn,
 		"hasfield":           a.hasfield,
 		"getstartcount":      a.getstartcount,
+		"jsonname":           a.jsonname,
+		"refvalinit":         a.refvalinit,
+		"reffillval":         a.reffillval,
+		"reflist":            a.reflist,
 	}
 }
 
@@ -179,7 +184,8 @@ func (a *ArgType) colnames(fields []*Field, ignoreNames ...string) string {
 	str := ""
 	i := 0
 	for _, f := range fields {
-		if ignore[f.Name] {
+		if ignore[f.Name] ||
+			f.Conv != nil {
 			continue
 		}
 
@@ -273,7 +279,14 @@ func (a *ArgType) colnamesquerymulti(fields []*Field, sep string, startCount int
 		if i > startCount {
 			str = str + sep
 		}
-		str = str + a.colname(f.Col) + " = " + a.Loader.NthParam(i)
+
+		if f.Ref != nil {
+			str = str + a.colname(f.Col) + " = " + a.Loader.NthParam(i) + "." + f.Ref.KeyName
+		} else if f.Conv != nil {
+			//TODO:jennal conv
+		} else {
+			str = str + a.colname(f.Col) + " = " + a.Loader.NthParam(i)
+		}
 		i++
 	}
 
@@ -322,14 +335,20 @@ func (a *ArgType) colvals(fields []*Field, ignoreNames ...string) string {
 	str := ""
 	i := 0
 	for _, f := range fields {
-		if ignore[f.Name] {
+		if ignore[f.Name] ||
+			f.Conv != nil {
 			continue
 		}
 
 		if i != 0 {
 			str = str + ", "
 		}
-		str = str + a.Loader.NthParam(i)
+
+		if f.Ref != nil {
+			str = str + a.Loader.NthParam(i) + "." + f.Ref.KeyName
+		} else {
+			str = str + a.Loader.NthParam(i)
+		}
 		i++
 	}
 
@@ -385,7 +404,14 @@ func (a *ArgType) fieldnames(fields []*Field, prefix string, ignoreNames ...stri
 		if i != 0 {
 			str = str + ", "
 		}
-		str = str + prefix + "." + f.Name
+
+		if f.Ref != nil {
+			str = str + prefix + "." + f.Name + "." + f.Ref.KeyName
+		} else if f.Conv != nil {
+			//TODO: jennal conv
+		} else {
+			str = str + prefix + "." + f.Name
+		}
 		i++
 	}
 
@@ -634,4 +660,66 @@ func (a *ArgType) hasfield(fields []*Field, name string) bool {
 // getstartcount returns a starting count for numbering columsn in queries
 func (a *ArgType) getstartcount(fields []*Field, pkFields []*Field) int {
 	return len(fields) - len(pkFields)
+}
+
+func (a *ArgType) jsonname(field *Field) string {
+	if field.Ref != nil {
+		return snaker.CamelToSnakeIdentifier(field.Name)
+	}
+
+	return field.Col.ColumnName
+}
+
+func (a *ArgType) refvalinit(tableType *Type, short string) string {
+	result := ""
+
+	for _, field := range tableType.Fields {
+		if field.Ref == nil {
+			continue
+		}
+
+		result += fmt.Sprintf("%s.%s = &%s{}\n",
+			short, field.Name, strings.Replace(field.Ref.Type, "*", "", -1),
+		)
+	}
+
+	return result
+}
+
+func (a *ArgType) reffillval(tableType *Type, short string, db string) string {
+	result := ""
+
+	for _, field := range tableType.Fields {
+		if field.Ref == nil {
+			continue
+		}
+
+		result += fmt.Sprintf(`%s.%s, err = %s(%s, %s.%s.%s)
+if err != nil {
+	return nil, err
+}
+`,
+			short, field.Name,
+			field.Ref.FuncName, db,
+			short, field.Name, field.Ref.KeyName,
+		)
+	}
+
+	return result
+}
+
+func (a *ArgType) reflist(tableType *Type) interface{} {
+	result := []*Field{}
+
+	for _, field := range tableType.Fields {
+		if field.Ref == nil {
+			continue
+		}
+
+		result = append(result, field)
+	}
+
+	// spew.Dump(result)
+	return result
+	// return spew.Sdump(result)
 }

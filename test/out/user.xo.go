@@ -10,18 +10,18 @@ import (
 
 // User represents a row from '`testxo`.`user`'.
 type User struct {
-	ID     int            `json:"id"`      // id
-	PropID int            `json:"prop_id"` // prop_id
-	Prop2  sql.NullString `json:"prop2"`   // prop2
-	Name   sql.NullString `json:"name"`    // name
-	Age    sql.NullInt64  `json:"age"`     // age
+	ID       int            `json:"id"`       // id
+	Property *UserProperty  `json:"property"` // prop_id `xo:ref=user_property.id,name=Property` 绑定user_property表的id
+	Prop2    sql.NullString `json:"prop2"`    // prop2 `xo:conv=json,type=*Prop2` 利用json编码解码
+	Name     sql.NullString `json:"name"`     // name
+	Age      sql.NullInt64  `json:"age"`      // age
 
 	// xo fields
 	_exists, _deleted bool
 
 	// extra fields
-	ExName string `json:"exname"` // `xo:name=ExName,type=string` 新增ExName字段
-	ExAge  int    `json:"exage"`  // `xo:name=ExAge,type=int` 新增ExAge字段
+	ExName string `json:"ex_name"` // `xo:name=ExName,type=string` 新增ExName字段
+	ExAge  int    `json:"ex_age"`  // `xo:name=ExAge,type=int` 新增ExAge字段
 }
 
 // Exists determines if the User exists in the database.
@@ -47,18 +47,23 @@ func (u *User) Insert(db XODB) error {
 	const sqlstr = "INSERT INTO `testxo`.`user` (" +
 		"`id`, `prop_id`, `prop2`, `name`, `age`" +
 		") VALUES (" +
-		"?, ?, ?, ?, ?" +
+		"?, ?.ID, ?, ?, ?" +
 		")"
 
 	// run query
-	XOLog(sqlstr, u.ID, u.PropID, u.Prop2, u.Name, u.Age)
-	_, err = db.Exec(sqlstr, u.ID, u.PropID, u.Prop2, u.Name, u.Age)
+	XOLog(sqlstr, u.ID, u.Property.ID, u.Prop2, u.Name, u.Age)
+	_, err = db.Exec(sqlstr, u.ID, u.Property.ID, u.Prop2, u.Name, u.Age)
 	if err != nil {
 		return err
 	}
 
 	// set existence
 	u._exists = true
+
+	// insert ref list
+	if err := u.Property.Insert(db); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -83,9 +88,18 @@ func (u *User) Update(db XODB) error {
 		" WHERE `id` = ?"
 
 	// run query
-	XOLog(sqlstr, u.PropID, u.Prop2, u.Name, u.Age, u.ID)
-	_, err = db.Exec(sqlstr, u.PropID, u.Prop2, u.Name, u.Age, u.ID)
-	return err
+	XOLog(sqlstr, u.Property.ID, u.Prop2, u.Name, u.Age, u.ID)
+	_, err = db.Exec(sqlstr, u.Property.ID, u.Prop2, u.Name, u.Age, u.ID)
+	if err != nil {
+		return err
+	}
+
+	// update ref list
+	if err := u.Property.Update(db); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Save saves the User to the database.
@@ -124,6 +138,11 @@ func (u *User) Delete(db XODB) error {
 	// set deleted
 	u._deleted = true
 
+	// delete ref list
+	if err := u.Property.Delete(db); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -145,7 +164,16 @@ func UserByID(db XODB, id int) (*User, error) {
 		_exists: true,
 	}
 
-	err = db.QueryRow(sqlstr, id).Scan(&u.ID, &u.PropID, &u.Prop2, &u.Name, &u.Age)
+	// ref init
+	u.Property = &UserProperty{}
+
+	err = db.QueryRow(sqlstr, id).Scan(&u.ID, &u.Property.ID, &u.Prop2, &u.Name, &u.Age)
+	if err != nil {
+		return nil, err
+	}
+
+	// ref load
+	u.Property, err = UserPropertyByID(db, u.Property.ID)
 	if err != nil {
 		return nil, err
 	}

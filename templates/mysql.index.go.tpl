@@ -21,10 +21,16 @@ func {{ .FuncName }}(db XODB{{ goparamlist .Fields true true }}) ({{ if not .Ind
 	{{ end -}}
 	}
 
+	// ref init
+	{{ refvalinit .Type $short }}
+
 	err = db.QueryRow(sqlstr{{ goparamlist .Fields true false }}).Scan({{ fieldnames .Type.Fields (print "&" $short) }})
 	if err != nil {
 		return nil, err
 	}
+
+	// ref load
+	{{ reffillval .Type $short "db" }}
 
 	return &{{ $short }}, nil
 {{- else }}
@@ -43,11 +49,17 @@ func {{ .FuncName }}(db XODB{{ goparamlist .Fields true true }}) ({{ if not .Ind
 		{{ end -}}
 		}
 
+		// ref init
+		{{ refvalinit .Type $short }}
+
 		// scan
 		err = q.Scan({{ fieldnames .Type.Fields (print "&" $short) }})
 		if err != nil {
 			return nil, err
 		}
+
+		// ref load
+		{{ reffillval .Type $short "db" }}
 
 		res = append(res, &{{ $short }})
 	}

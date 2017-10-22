@@ -107,6 +107,20 @@ type Proc struct {
 	Comment    string
 }
 
+// Ref describe a field is a reference to other table type
+type Ref struct {
+	Type       string
+	TableName  string
+	ColumnName string
+	FuncName   string
+	KeyName    string
+}
+
+// Conv describe a field value is converted by a method
+type Conv struct {
+	//TODO:
+}
+
 // Field contains field information.
 type Field struct {
 	Name    string
@@ -115,6 +129,9 @@ type Field struct {
 	Len     int
 	Col     *models.Column
 	Comment string
+
+	Ref  *Ref
+	Conv *Conv
 }
 
 // ExtraField is parsed from comment of table
