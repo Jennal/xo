@@ -65,6 +65,7 @@ func LoadColumnType(args *ArgType, field *Field) error {
 		return err
 	}
 
+	// ref
 	if ref, ok := data["ref"]; ok {
 		tk := strings.Split(ref, ".")
 		if len(tk) != 2 {
@@ -87,10 +88,15 @@ func LoadColumnType(args *ArgType, field *Field) error {
 		return nil
 	}
 
-	//TODO: jennal conv
-	// if conv, ok := data["conv"]; ok {
-	// 	return nil
-	// }
+	// conv
+	if conv, ok := data["conv"]; ok && conv == "json" {
+		field.Type = "*" + SingularizeTableName(data["type"], args.KeepTablePrefix)
+		field.Conv = &Conv{
+			JsFieldName: "js" + field.Name,
+		}
+
+		return nil
+	}
 
 	return nil
 }

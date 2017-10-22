@@ -1,6 +1,7 @@
 {{- $short := (shortname .Name "err" "res" "sqlstr" "db" "XOLog") -}}
 {{- $table := (schema .Schema .Table.TableName) -}}
 {{- $reflist := (reflist .) -}}
+{{- $convlist := (convlist .) -}}
 {{- if .Comment -}}
 // {{ .Comment }}
 {{- else -}}
@@ -20,6 +21,13 @@ type {{ .Name }} struct {
 	// extra fields
 	{{- range .ExtraFields }}
 		{{ .Name }} {{ retype .Type }} `json:"{{ .JsonName }}"` // {{ .Comment }}
+	{{- end }}
+{{- end }}
+{{- if $convlist }}
+
+	// json fields
+	{{- range $convlist }}
+		{{ .Conv.JsFieldName }} string `json:"-"` // {{ .Col.ColumnName }}
 	{{- end }}
 {{- end }}
 }
@@ -44,6 +52,17 @@ func ({{ $short }} *{{ .Name }}) Insert(db XODB) error {
 		return errors.New("insert failed: already exists")
 	}
 
+{{- if $convlist }}
+	// json fields
+	{{- range $convlist }}
+		buf, err := json.Marshal({{ $short }}.{{ .Name }})
+		if err != nil {
+			return err
+		}
+		{{ $short }}.{{ .Conv.JsFieldName }} = string(buf)
+
+	{{- end }}
+{{- end }}
 
 {{ if .Table.ManualPk  }}
 	// sql insert query, primary key must be provided
@@ -114,6 +133,18 @@ func ({{ $short }} *{{ .Name }}) Insert(db XODB) error {
 		if {{ $short }}._deleted {
 			return errors.New("update failed: marked for deletion")
 		}
+
+		{{- if $convlist }}
+			// json fields
+			{{- range $convlist }}
+				buf, err := json.Marshal({{ $short }}.{{ .Name }})
+				if err != nil {
+					return err
+				}
+				{{ $short }}.{{ .Conv.JsFieldName }} = string(buf)
+
+			{{- end }}
+		{{- end }}
 
 		{{ if gt ( len .PrimaryKeyFields ) 1 }}
 			// sql query with composite primary key

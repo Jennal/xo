@@ -1,5 +1,6 @@
 {{- $short := (shortname .Type.Name "err" "sqlstr" "db" "q" "res" "XOLog" .Fields) -}}
 {{- $table := (schema .Schema .Type.Table.TableName) -}}
+{{- $convlist := (convlist .Type) -}}
 // {{ .FuncName }} retrieves a row from '{{ $table }}' as a {{ .Type.Name }}.
 //
 // Generated from index '{{ .Index.IndexName }}'.
@@ -32,6 +33,20 @@ func {{ .FuncName }}(db XODB{{ goparamlist .Fields true true }}) ({{ if not .Ind
 	// ref load
 	{{ reffillval .Type $short "db" }}
 
+	{{- if $convlist }}
+		// json fields
+		{{- range $convlist }}
+			{{ $short }}.{{ .Name }} = &{{ puretype .Type }}{}
+			if len({{ $short }}.{{ .Conv.JsFieldName }}) > 0 {
+				err = json.Unmarshal([]byte({{ $short }}.{{ .Conv.JsFieldName }}), {{ $short }}.{{ .Name }})
+				if err != nil {
+					return nil, err
+				}
+			}
+
+		{{- end }}
+	{{- end }}
+
 	return &{{ $short }}, nil
 {{- else }}
 	q, err := db.Query(sqlstr{{ goparamlist .Fields true false }})
@@ -60,6 +75,20 @@ func {{ .FuncName }}(db XODB{{ goparamlist .Fields true true }}) ({{ if not .Ind
 
 		// ref load
 		{{ reffillval .Type $short "db" }}
+
+		{{- if $convlist }}
+			// json fields
+			{{- range $convlist }}
+				{{ $short }}.{{ .Name }} = &{{ puretype .Type }}{}
+				if len({{ $short }}.{{ .Conv.JsFieldName }}) > 0 {
+					err = json.Unmarshal([]byte({{ $short }}.{{ .Conv.JsFieldName }}), {{ $short }}.{{ .Name }})
+					if err != nil {
+						return nil, err
+					}
+				}
+
+			{{- end }}
+		{{- end }}
 
 		res = append(res, &{{ $short }})
 	}

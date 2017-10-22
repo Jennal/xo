@@ -5,6 +5,7 @@ package out
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 )
 
@@ -12,7 +13,7 @@ import (
 type User struct {
 	ID       int            `json:"id"`       // id
 	Property *UserProperty  `json:"property"` // prop_id `xo:ref=user_property.id,name=Property` 绑定user_property表的id
-	Prop2    sql.NullString `json:"prop2"`    // prop2 `xo:conv=json,type=*Prop2` 利用json编码解码
+	Prop2    *Prop2         `json:"prop2"`    // prop2 `xo:conv=json,type=*Prop2` 利用json编码解码
 	Name     sql.NullString `json:"name"`     // name
 	Age      sql.NullInt64  `json:"age"`      // age
 
@@ -22,6 +23,9 @@ type User struct {
 	// extra fields
 	ExName string `json:"ex_name"` // `xo:name=ExName,type=string` 新增ExName字段
 	ExAge  int    `json:"ex_age"`  // `xo:name=ExAge,type=int` 新增ExAge字段
+
+	// json fields
+	jsProp2 string `json:"-"` // prop2
 }
 
 // Exists determines if the User exists in the database.
@@ -42,17 +46,23 @@ func (u *User) Insert(db XODB) error {
 	if u._exists {
 		return errors.New("insert failed: already exists")
 	}
+	// json fields
+	buf, err := json.Marshal(u.Prop2)
+	if err != nil {
+		return err
+	}
+	u.jsProp2 = string(buf)
 
 	// sql insert query, primary key must be provided
 	const sqlstr = "INSERT INTO `testxo`.`user` (" +
-		"`id`, `prop_id`, `prop2`, `name`, `age`" +
+		"`id`, `prop_id`, `name`, `age`" +
 		") VALUES (" +
-		"?, ?.ID, ?, ?, ?" +
+		"?, ?.ID, ?, ?" +
 		")"
 
 	// run query
-	XOLog(sqlstr, u.ID, u.Property.ID, u.Prop2, u.Name, u.Age)
-	_, err = db.Exec(sqlstr, u.ID, u.Property.ID, u.Prop2, u.Name, u.Age)
+	XOLog(sqlstr, u.ID, u.Property.ID, u.jsProp2, u.Name, u.Age)
+	_, err = db.Exec(sqlstr, u.ID, u.Property.ID, u.jsProp2, u.Name, u.Age)
 	if err != nil {
 		return err
 	}
@@ -81,6 +91,12 @@ func (u *User) Update(db XODB) error {
 	if u._deleted {
 		return errors.New("update failed: marked for deletion")
 	}
+	// json fields
+	buf, err := json.Marshal(u.Prop2)
+	if err != nil {
+		return err
+	}
+	u.jsProp2 = string(buf)
 
 	// sql query
 	const sqlstr = "UPDATE `testxo`.`user` SET " +
@@ -88,8 +104,8 @@ func (u *User) Update(db XODB) error {
 		" WHERE `id` = ?"
 
 	// run query
-	XOLog(sqlstr, u.Property.ID, u.Prop2, u.Name, u.Age, u.ID)
-	_, err = db.Exec(sqlstr, u.Property.ID, u.Prop2, u.Name, u.Age, u.ID)
+	XOLog(sqlstr, u.Property.ID, u.jsProp2, u.Name, u.Age, u.ID)
+	_, err = db.Exec(sqlstr, u.Property.ID, u.jsProp2, u.Name, u.Age, u.ID)
 	if err != nil {
 		return err
 	}
@@ -154,7 +170,7 @@ func UserByID(db XODB, id int) (*User, error) {
 
 	// sql query
 	const sqlstr = "SELECT " +
-		"`id`, `prop_id`, `prop2`, `name`, `age` " +
+		"`id`, `prop_id`, `name`, `age` " +
 		"FROM `testxo`.`user` " +
 		"WHERE `id` = ?"
 
@@ -167,7 +183,7 @@ func UserByID(db XODB, id int) (*User, error) {
 	// ref init
 	u.Property = &UserProperty{}
 
-	err = db.QueryRow(sqlstr, id).Scan(&u.ID, &u.Property.ID, &u.Prop2, &u.Name, &u.Age)
+	err = db.QueryRow(sqlstr, id).Scan(&u.ID, &u.Property.ID, &u.jsProp2, &u.Name, &u.Age)
 	if err != nil {
 		return nil, err
 	}
@@ -176,6 +192,15 @@ func UserByID(db XODB, id int) (*User, error) {
 	u.Property, err = UserPropertyByID(db, u.Property.ID)
 	if err != nil {
 		return nil, err
+	}
+
+	// json fields
+	u.Prop2 = &Prop2{}
+	if len(u.jsProp2) > 0 {
+		err = json.Unmarshal([]byte(u.jsProp2), u.Prop2)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &u, nil

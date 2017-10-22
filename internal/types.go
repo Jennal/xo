@@ -118,7 +118,7 @@ type Ref struct {
 
 // Conv describe a field value is converted by a method
 type Conv struct {
-	//TODO:
+	JsFieldName string
 }
 
 // Field contains field information.

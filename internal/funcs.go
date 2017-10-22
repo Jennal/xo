@@ -37,6 +37,8 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"refvalinit":         a.refvalinit,
 		"reffillval":         a.reffillval,
 		"reflist":            a.reflist,
+		"convlist":           a.convlist,
+		"puretype":           a.puretype,
 	}
 }
 
@@ -280,13 +282,7 @@ func (a *ArgType) colnamesquerymulti(fields []*Field, sep string, startCount int
 			str = str + sep
 		}
 
-		if f.Ref != nil {
-			str = str + a.colname(f.Col) + " = " + a.Loader.NthParam(i) + "." + f.Ref.KeyName
-		} else if f.Conv != nil {
-			//TODO:jennal conv
-		} else {
-			str = str + a.colname(f.Col) + " = " + a.Loader.NthParam(i)
-		}
+		str = str + a.colname(f.Col) + " = " + a.Loader.NthParam(i)
 		i++
 	}
 
@@ -408,7 +404,7 @@ func (a *ArgType) fieldnames(fields []*Field, prefix string, ignoreNames ...stri
 		if f.Ref != nil {
 			str = str + prefix + "." + f.Name + "." + f.Ref.KeyName
 		} else if f.Conv != nil {
-			//TODO: jennal conv
+			str = str + prefix + "." + f.Conv.JsFieldName
 		} else {
 			str = str + prefix + "." + f.Name
 		}
@@ -439,7 +435,14 @@ func (a *ArgType) fieldnamesmulti(fields []*Field, prefix string, ignoreNames []
 		if i != 0 {
 			str = str + ", "
 		}
-		str = str + prefix + "." + f.Name
+
+		if f.Ref != nil {
+			str = str + prefix + "." + f.Name + "." + f.Ref.KeyName
+		} else if f.Conv != nil {
+			str = str + prefix + "." + f.Conv.JsFieldName
+		} else {
+			str = str + prefix + "." + f.Name
+		}
 		i++
 	}
 
@@ -722,4 +725,28 @@ func (a *ArgType) reflist(tableType *Type) interface{} {
 	// spew.Dump(result)
 	return result
 	// return spew.Sdump(result)
+}
+
+func (a *ArgType) convlist(tableType *Type) interface{} {
+	result := []*Field{}
+
+	for _, field := range tableType.Fields {
+		if field.Conv == nil {
+			continue
+		}
+
+		result = append(result, field)
+	}
+
+	// spew.Dump(result)
+	return result
+	// return spew.Sdump(result)
+}
+
+func (a *ArgType) puretype(t string) string {
+	if strings.HasPrefix(t, "*") {
+		return a.puretype(t[1:])
+	}
+
+	return t
 }
