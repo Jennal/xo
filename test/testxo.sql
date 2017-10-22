@@ -23,7 +23,7 @@ DROP TABLE IF EXISTS `user`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `user` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `prop_id` int(11) NOT NULL COMMENT '`xo:ref=user_property.id,name=Property` 绑定user_property表的id',
   `prop2` text COMMENT '`xo:conv=json,type=*Prop2` 利用json编码解码',
   `name` varchar(45) DEFAULT NULL,
@@ -49,7 +49,7 @@ DROP TABLE IF EXISTS `user_property`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `user_property` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `nickname` varchar(45) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -73,4 +73,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2017-10-22 20:30:51
+-- Dump completed on 2017-10-22 21:49:02

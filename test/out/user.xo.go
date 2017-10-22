@@ -53,27 +53,38 @@ func (u *User) Insert(db XODB) error {
 	}
 	u.jsProp2 = string(buf)
 
-	// sql insert query, primary key must be provided
+	// insert ref list
+	if u.Property != nil {
+		if err := u.Property.Insert(db); err != nil {
+			return err
+		}
+	} else {
+		u.Property = &UserProperty{}
+	}
+
+	// sql insert query, primary key provided by autoincrement
 	const sqlstr = "INSERT INTO `testxo`.`user` (" +
-		"`id`, `prop_id`, `name`, `age`" +
+		"`prop_id`, `prop2`, `name`, `age`" +
 		") VALUES (" +
-		"?, ?.ID, ?, ?" +
+		"?, ?, ?, ?" +
 		")"
 
 	// run query
-	XOLog(sqlstr, u.ID, u.Property.ID, u.jsProp2, u.Name, u.Age)
-	_, err = db.Exec(sqlstr, u.ID, u.Property.ID, u.jsProp2, u.Name, u.Age)
+	XOLog(sqlstr, u.Property.ID, u.jsProp2, u.Name, u.Age)
+	res, err := db.Exec(sqlstr, u.Property.ID, u.jsProp2, u.Name, u.Age)
 	if err != nil {
 		return err
 	}
 
-	// set existence
-	u._exists = true
-
-	// insert ref list
-	if err := u.Property.Insert(db); err != nil {
+	// retrieve id
+	id, err := res.LastInsertId()
+	if err != nil {
 		return err
 	}
+
+	// set primary key and existence
+	u.ID = int(id)
+	u._exists = true
 
 	return nil
 }
@@ -111,8 +122,10 @@ func (u *User) Update(db XODB) error {
 	}
 
 	// update ref list
-	if err := u.Property.Update(db); err != nil {
-		return err
+	if u.Property != nil {
+		if err := u.Property.Update(db); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -155,8 +168,10 @@ func (u *User) Delete(db XODB) error {
 	u._deleted = true
 
 	// delete ref list
-	if err := u.Property.Delete(db); err != nil {
-		return err
+	if u.Property != nil {
+		if err := u.Property.Delete(db); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -170,7 +185,7 @@ func UserByID(db XODB, id int) (*User, error) {
 
 	// sql query
 	const sqlstr = "SELECT " +
-		"`id`, `prop_id`, `name`, `age` " +
+		"`id`, `prop_id`, `prop2`, `name`, `age` " +
 		"FROM `testxo`.`user` " +
 		"WHERE `id` = ?"
 

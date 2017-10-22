@@ -186,14 +186,14 @@ func (a *ArgType) colnames(fields []*Field, ignoreNames ...string) string {
 	str := ""
 	i := 0
 	for _, f := range fields {
-		if ignore[f.Name] ||
-			f.Conv != nil {
+		if ignore[f.Name] {
 			continue
 		}
 
 		if i != 0 {
 			str = str + ", "
 		}
+
 		str = str + a.colname(f.Col)
 		i++
 	}
@@ -331,8 +331,7 @@ func (a *ArgType) colvals(fields []*Field, ignoreNames ...string) string {
 	str := ""
 	i := 0
 	for _, f := range fields {
-		if ignore[f.Name] ||
-			f.Conv != nil {
+		if ignore[f.Name] {
 			continue
 		}
 
@@ -340,11 +339,7 @@ func (a *ArgType) colvals(fields []*Field, ignoreNames ...string) string {
 			str = str + ", "
 		}
 
-		if f.Ref != nil {
-			str = str + a.Loader.NthParam(i) + "." + f.Ref.KeyName
-		} else {
-			str = str + a.Loader.NthParam(i)
-		}
+		str = str + a.Loader.NthParam(i)
 		i++
 	}
 

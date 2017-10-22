@@ -64,6 +64,19 @@ func ({{ $short }} *{{ .Name }}) Insert(db XODB) error {
 	{{- end }}
 {{- end }}
 
+{{ if $reflist }}
+	// insert ref list
+	{{- range $reflist }}
+		if {{ $short }}.{{ .Name }} != nil {
+			if err := {{ $short }}.{{ .Name }}.Insert(db); err != nil {
+				return err
+			}
+		} else {
+			{{ $short }}.{{ .Name }} = &{{ puretype .Type }}{}
+		}
+	{{ end }}
+{{ end }}
+
 {{ if .Table.ManualPk  }}
 	// sql insert query, primary key must be provided
 	const sqlstr = "INSERT INTO {{ $table }} (" +
@@ -105,15 +118,6 @@ func ({{ $short }} *{{ .Name }}) Insert(db XODB) error {
 	// set primary key and existence
 	{{ $short }}.{{ .PrimaryKey.Name }} = {{ .PrimaryKey.Type }}(id)
 	{{ $short }}._exists = true
-{{ end }}
-
-{{ if $reflist }}
-	// insert ref list
-	{{- range $reflist }}
-		if err := {{ $short }}.{{ .Name }}.Insert(db); err != nil {
-			return err
-		}
-	{{ end }}
 {{ end }}
 
 	return nil
@@ -175,8 +179,10 @@ func ({{ $short }} *{{ .Name }}) Insert(db XODB) error {
 {{ if $reflist }}
 	// update ref list
 	{{- range $reflist }}
-		if err := {{ $short }}.{{ .Name }}.Update(db); err != nil {
-			return err
+		if {{ $short }}.{{ .Name }} != nil {
+			if err := {{ $short }}.{{ .Name }}.Update(db); err != nil {
+				return err
+			}
 		}
 	{{ end }}
 {{ end }}
@@ -238,8 +244,10 @@ func ({{ $short }} *{{ .Name }}) Delete(db XODB) error {
 {{ if $reflist }}
 	// delete ref list
 	{{- range $reflist }}
-		if err := {{ $short }}.{{ .Name }}.Delete(db); err != nil {
-			return err
+		if {{ $short }}.{{ .Name }} != nil {
+			if err := {{ $short }}.{{ .Name }}.Delete(db); err != nil {
+				return err
+			}
 		}
 	{{ end }}
 {{ end }}

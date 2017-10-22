@@ -36,21 +36,28 @@ func (up *UserProperty) Insert(db XODB) error {
 		return errors.New("insert failed: already exists")
 	}
 
-	// sql insert query, primary key must be provided
+	// sql insert query, primary key provided by autoincrement
 	const sqlstr = "INSERT INTO `testxo`.`user_property` (" +
-		"`id`, `nickname`" +
+		"`nickname`" +
 		") VALUES (" +
-		"?, ?" +
+		"?" +
 		")"
 
 	// run query
-	XOLog(sqlstr, up.ID, up.Nickname)
-	_, err = db.Exec(sqlstr, up.ID, up.Nickname)
+	XOLog(sqlstr, up.Nickname)
+	res, err := db.Exec(sqlstr, up.Nickname)
 	if err != nil {
 		return err
 	}
 
-	// set existence
+	// retrieve id
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	// set primary key and existence
+	up.ID = int(id)
 	up._exists = true
 
 	return nil
