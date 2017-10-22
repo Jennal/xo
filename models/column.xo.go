@@ -9,12 +9,13 @@ import (
 
 // Column represents column info.
 type Column struct {
-	FieldOrdinal int            // field_ordinal
-	ColumnName   string         // column_name
-	DataType     string         // data_type
-	NotNull      bool           // not_null
-	DefaultValue sql.NullString // default_value
-	IsPrimaryKey bool           // is_primary_key
+	FieldOrdinal  int            // field_ordinal
+	ColumnName    string         // column_name
+	DataType      string         // data_type
+	NotNull       bool           // not_null
+	DefaultValue  sql.NullString // default_value
+	IsPrimaryKey  bool           // is_primary_key
+	ColumnComment string         //column_comment
 }
 
 // PgTableColumns runs a custom query, returning results as Column.
@@ -73,7 +74,8 @@ func MyTableColumns(db XODB, schema string, table string) ([]*Column, error) {
 		`IF(data_type = 'enum', column_name, column_type) AS data_type, ` +
 		`IF(is_nullable = 'YES', false, true) AS not_null, ` +
 		`column_default AS default_value, ` +
-		`IF(column_key = 'PRI', true, false) AS is_primary_key ` +
+		`IF(column_key = 'PRI', true, false) AS is_primary_key, ` +
+		`column_comment ` +
 		`FROM information_schema.columns ` +
 		`WHERE table_schema = ? AND table_name = ? ` +
 		`ORDER BY ordinal_position`
@@ -92,7 +94,7 @@ func MyTableColumns(db XODB, schema string, table string) ([]*Column, error) {
 		c := Column{}
 
 		// scan
-		err = q.Scan(&c.FieldOrdinal, &c.ColumnName, &c.DataType, &c.NotNull, &c.DefaultValue, &c.IsPrimaryKey)
+		err = q.Scan(&c.FieldOrdinal, &c.ColumnName, &c.DataType, &c.NotNull, &c.DefaultValue, &c.IsPrimaryKey, &c.ColumnComment)
 		if err != nil {
 			return nil, err
 		}

@@ -471,15 +471,22 @@ func (tl TypeLoader) LoadRelkind(args *ArgType, relType RelType) (map[string]*Ty
 	for _, ti := range tableList {
 		// create template
 		typeTpl := &Type{
-			Name:    SingularizeTableName(ti.TableName, args.KeepTablePrefix),
-			Schema:  args.Schema,
-			RelType: relType,
-			Fields:  []*Field{},
-			Table:   ti,
+			Name:        SingularizeTableName(ti.TableName, args.KeepTablePrefix),
+			Schema:      args.Schema,
+			RelType:     relType,
+			Fields:      []*Field{},
+			ExtraFields: []*ExtraField{},
+			Table:       ti,
 		}
 
 		// process columns
 		err = tl.LoadColumns(args, typeTpl)
+		if err != nil {
+			return nil, err
+		}
+
+		// load extra fields
+		err = LoadExtraFields(args, typeTpl)
 		if err != nil {
 			return nil, err
 		}

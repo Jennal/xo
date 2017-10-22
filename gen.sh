@@ -229,7 +229,8 @@ ENDSQL
 # mysql table list query
 $XOBIN $MYDB -a -N -M -B -T Table -F MyTables -o $DEST $EXTRA << ENDSQL
 SELECT
-  table_name
+  table_name,
+  table_comment
 FROM information_schema.tables
 WHERE table_schema = %%schema string%% AND table_type = %%relkind string%%
 ENDSQL
@@ -242,7 +243,8 @@ SELECT
   IF(data_type = 'enum', column_name, column_type) AS data_type,
   IF(is_nullable = 'YES', false, true) AS not_null,
   column_default AS default_value,
-  IF(column_key = 'PRI', true, false) AS is_primary_key
+  IF(column_key = 'PRI', true, false) AS is_primary_key,
+  column_comment
 FROM information_schema.columns
 WHERE table_schema = %%schema string%% AND table_name = %%table string%%
 ORDER BY ordinal_position

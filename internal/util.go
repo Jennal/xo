@@ -228,7 +228,9 @@ func SingularizeTableName(s string, keepPrefix bool) string {
 	prefix := ""
 	if keepPrefix {
 		prefix = strings.ToUpper(s[:strings.IndexRune(s, '_')+1])
-		s = s[len(prefix)-1:]
+		if prefix != "" {
+			s = s[len(prefix)-1:]
+		}
 	}
 
 	if i := reverseIndexRune(s, '_'); i != -1 {

@@ -117,6 +117,14 @@ type Field struct {
 	Comment string
 }
 
+// ExtraField is parsed from comment of table
+type ExtraField struct {
+	Name     string
+	Type     string
+	JsonName string
+	Comment  string
+}
+
 // Type is a template item for a type (ie, table/view/custom query).
 type Type struct {
 	Name             string
@@ -125,6 +133,7 @@ type Type struct {
 	PrimaryKey       *Field
 	PrimaryKeyFields []*Field
 	Fields           []*Field
+	ExtraFields      []*ExtraField
 	Table            *models.Table
 	Comment          string
 }
