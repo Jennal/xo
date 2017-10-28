@@ -63,6 +63,15 @@ type TypeLoader struct {
 	QueryColumnList func(*ArgType, []string) ([]*models.Column, error)
 }
 
+var (
+	s_enumMap       map[string]*Enum
+	s_procMap       map[string]*Proc
+	s_tableMap      map[string]*Type
+	s_viewMap       map[string]*Type
+	s_foreignKeyMap map[string]*ForeignKey
+	s_indexMap      map[string]*Index
+)
+
 // NthParam satisifies Loader's NthParam.
 func (tl TypeLoader) NthParam(i int) string {
 	if tl.ParamN != nil {
@@ -248,42 +257,78 @@ func (tl TypeLoader) LoadSchema(args *ArgType) error {
 	var err error
 
 	// load enums
-	_, err = tl.LoadEnums(args)
+	s_enumMap, err = tl.LoadEnums(args)
 	if err != nil {
 		return err
 	}
 
 	// load procs
-	_, err = tl.LoadProcs(args)
+	s_procMap, err = tl.LoadProcs(args)
 	if err != nil {
 		return err
 	}
 
 	// load tables
-	tableMap, err := tl.LoadRelkind(args, Table)
+	s_tableMap, err = tl.LoadRelkind(args, Table)
 	if err != nil {
 		return err
 	}
 
 	// load views
-	viewMap, err := tl.LoadRelkind(args, View)
+	s_viewMap, err = tl.LoadRelkind(args, View)
 	if err != nil {
 		return err
 	}
 
 	// merge views with the tableMap
-	for k, v := range viewMap {
-		tableMap[k] = v
+	for k, v := range s_viewMap {
+		s_tableMap[k] = v
 	}
 
 	// load foreign keys
-	_, err = tl.LoadForeignKeys(args, tableMap)
+	s_foreignKeyMap, err = tl.LoadForeignKeys(args, s_tableMap)
 	if err != nil {
 		return err
 	}
 
 	// load indexes
-	_, err = tl.LoadIndexes(args, tableMap)
+	s_indexMap, err = tl.LoadIndexes(args, s_tableMap)
+	if err != nil {
+		return err
+	}
+
+	//fix with comment
+	err = FixRelkindWithComment(args, s_tableMap)
+	if err != nil {
+		return err
+	}
+
+	//generate enums
+	err = GenEnumTypes(args)
+	if err != nil {
+		return err
+	}
+
+	//generate procs
+	err = GenProcTypes(args)
+	if err != nil {
+		return err
+	}
+
+	//generate table/view
+	err = GenTableTypes(args)
+	if err != nil {
+		return err
+	}
+
+	//generate foreign keys
+	err = GenForeignKeyTypes(args)
+	if err != nil {
+		return err
+	}
+
+	//generate indexes
+	err = GenIndexTypes(args)
 	if err != nil {
 		return err
 	}
@@ -324,14 +369,6 @@ func (tl TypeLoader) LoadEnums(args *ArgType) (map[string]*Enum, error) {
 
 		enumMap[enumTpl.Name] = enumTpl
 		args.KnownTypeMap[enumTpl.Name] = true
-	}
-
-	// generate enum templates
-	for _, e := range enumMap {
-		err = args.ExecuteTemplate(EnumTemplate, e.Name, "", e)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return enumMap, nil
@@ -413,14 +450,6 @@ func (tl TypeLoader) LoadProcs(args *ArgType) (map[string]*Proc, error) {
 		procMap[p.ProcName] = procTpl
 	}
 
-	// generate proc templates
-	for _, p := range procMap {
-		err = args.ExecuteTemplate(ProcTemplate, "sp_"+p.Name, "", p)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return procMap, nil
 }
 
@@ -485,21 +514,13 @@ func (tl TypeLoader) LoadRelkind(args *ArgType, relType RelType) (map[string]*Ty
 			return nil, err
 		}
 
-		// load extra fields
-		err = LoadTableExtraFields(args, typeTpl)
-		if err != nil {
-			return nil, err
-		}
+		// // load extra fields
+		// err = LoadTableExtraFields(args, typeTpl)
+		// if err != nil {
+		// 	return nil, err
+		// }
 
 		tableMap[ti.TableName] = typeTpl
-	}
-
-	// generate table templates
-	for _, t := range tableMap {
-		err = args.ExecuteTemplate(TypeTemplate, t.Name, "", t)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return tableMap, nil
@@ -542,11 +563,11 @@ func (tl TypeLoader) LoadColumns(args *ArgType, typeTpl *Type) error {
 		}
 		f.Len, f.NilType, f.Type = tl.ParseType(args, c.DataType, !c.NotNull)
 
-		// load column type from comment
-		err := LoadColumnType(args, f)
-		if err != nil {
-			return err
-		}
+		// // load column type from comment
+		// err := LoadColumnType(args, f)
+		// if err != nil {
+		// 	return err
+		// }
 
 		// set primary key
 		if c.IsPrimaryKey {
@@ -578,14 +599,6 @@ func (tl TypeLoader) LoadForeignKeys(args *ArgType, tableMap map[string]*Type) (
 	// determine foreign key names
 	for _, fk := range fkMap {
 		fk.Name = args.ForeignKeyName(fkMap, fk)
-	}
-
-	// generate templates
-	for _, fk := range fkMap {
-		err = args.ExecuteTemplate(ForeignKeyTemplate, fk.Type.Name, fk.ForeignKey.ForeignKeyName, fk)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return fkMap, nil
@@ -670,14 +683,6 @@ func (tl TypeLoader) LoadIndexes(args *ArgType, tableMap map[string]*Type) (map[
 	for _, t := range tableMap {
 		// load table indexes
 		err = tl.LoadTableIndexes(args, t, ixMap)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// generate templates
-	for _, ix := range ixMap {
-		err = args.ExecuteTemplate(IndexTemplate, ix.Type.Name, ix.Index.IndexName, ix)
 		if err != nil {
 			return nil, err
 		}
@@ -782,6 +787,66 @@ func (tl TypeLoader) LoadIndexColumns(args *ArgType, ixTpl *Index) error {
 		}
 
 		ixTpl.Fields = append(ixTpl.Fields, field)
+	}
+
+	return nil
+}
+
+func GenEnumTypes(args *ArgType) error {
+	// generate enum templates
+	for _, e := range s_enumMap {
+		err := args.ExecuteTemplate(EnumTemplate, e.Name, "", e)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func GenProcTypes(args *ArgType) error {
+	// generate proc templates
+	for _, p := range s_procMap {
+		err := args.ExecuteTemplate(ProcTemplate, "sp_"+p.Name, "", p)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func GenTableTypes(args *ArgType) error {
+	// generate table templates
+	for _, t := range s_tableMap {
+		err := args.ExecuteTemplate(TypeTemplate, t.Name, "", t)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func GenForeignKeyTypes(args *ArgType) error {
+	// generate templates
+	for _, fk := range s_foreignKeyMap {
+		err := args.ExecuteTemplate(ForeignKeyTemplate, fk.Type.Name, fk.ForeignKey.ForeignKeyName, fk)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func GenIndexTypes(args *ArgType) error {
+	// generate templates
+	for _, ix := range s_indexMap {
+		err := args.ExecuteTemplate(IndexTemplate, ix.Type.Name, ix.Index.IndexName, ix)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

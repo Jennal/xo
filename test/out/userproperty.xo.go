@@ -11,10 +11,18 @@ import (
 // UserProperty represents a row from '`testxo`.`user_property`'.
 type UserProperty struct {
 	ID       int            `json:"id"`       // id
+	UserID   int            `json:"user_id"`  // user_id
 	Nickname sql.NullString `json:"nickname"` // nickname
 
 	// xo fields
 	_exists, _deleted bool
+}
+
+// NewEmptyUserProperty create empty instance
+func NewEmptyUserProperty() *UserProperty {
+	up := &UserProperty{}
+
+	return up
 }
 
 // Exists determines if the UserProperty exists in the database.
@@ -38,14 +46,14 @@ func (up *UserProperty) Insert(db XODB) error {
 
 	// sql insert query, primary key provided by autoincrement
 	const sqlstr = "INSERT INTO `testxo`.`user_property` (" +
-		"`nickname`" +
+		"`user_id`, `nickname`" +
 		") VALUES (" +
-		"?" +
+		"?, ?" +
 		")"
 
 	// run query
-	XOLog(sqlstr, up.Nickname)
-	res, err := db.Exec(sqlstr, up.Nickname)
+	XOLog(sqlstr, up.UserID, up.Nickname)
+	res, err := db.Exec(sqlstr, up.UserID, up.Nickname)
 	if err != nil {
 		return err
 	}
@@ -79,12 +87,12 @@ func (up *UserProperty) Update(db XODB) error {
 
 	// sql query
 	const sqlstr = "UPDATE `testxo`.`user_property` SET " +
-		"`nickname` = ?" +
+		"`user_id` = ?, `nickname` = ?" +
 		" WHERE `id` = ?"
 
 	// run query
-	XOLog(sqlstr, up.Nickname, up.ID)
-	_, err = db.Exec(sqlstr, up.Nickname, up.ID)
+	XOLog(sqlstr, up.UserID, up.Nickname, up.ID)
+	_, err = db.Exec(sqlstr, up.UserID, up.Nickname, up.ID)
 	if err != nil {
 		return err
 	}
@@ -131,6 +139,49 @@ func (up *UserProperty) Delete(db XODB) error {
 	return nil
 }
 
+// UserPropertiesByUserID retrieves a row from '`testxo`.`user_property`' as a UserProperty.
+//
+// Generated from index 'idx_user_id'.
+func UserPropertiesByUserID(db XODB, userID int) ([]*UserProperty, error) {
+	var err error
+
+	// sql query
+	const sqlstr = "SELECT " +
+		"`id`, `user_id`, `nickname` " +
+		"FROM `testxo`.`user_property` " +
+		"WHERE `user_id` = ?"
+
+	// run query
+	XOLog(sqlstr, userID)
+	q, err := db.Query(sqlstr, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer q.Close()
+
+	// load results
+	res := []*UserProperty{}
+	for q.Next() {
+		up := UserProperty{
+			_exists: true,
+		}
+
+		// ref init
+
+		// scan
+		err = q.Scan(&up.ID, &up.UserID, &up.Nickname)
+		if err != nil {
+			return nil, err
+		}
+
+		// ref load
+
+		res = append(res, &up)
+	}
+
+	return res, nil
+}
+
 // UserPropertyByID retrieves a row from '`testxo`.`user_property`' as a UserProperty.
 //
 // Generated from index 'user_property_id_pkey'.
@@ -139,7 +190,7 @@ func UserPropertyByID(db XODB, id int) (*UserProperty, error) {
 
 	// sql query
 	const sqlstr = "SELECT " +
-		"`id`, `nickname` " +
+		"`id`, `user_id`, `nickname` " +
 		"FROM `testxo`.`user_property` " +
 		"WHERE `id` = ?"
 
@@ -151,7 +202,7 @@ func UserPropertyByID(db XODB, id int) (*UserProperty, error) {
 
 	// ref init
 
-	err = db.QueryRow(sqlstr, id).Scan(&up.ID, &up.Nickname)
+	err = db.QueryRow(sqlstr, id).Scan(&up.ID, &up.UserID, &up.Nickname)
 	if err != nil {
 		return nil, err
 	}

@@ -7,6 +7,26 @@ import (
 	"github.com/knq/snaker"
 )
 
+func FixRelkindWithComment(args *ArgType, typeMap map[string]*Type) error {
+	for _, typeTpl := range typeMap {
+		for _, field := range typeTpl.Fields {
+			// load column type from comment
+			err := LoadColumnType(args, field)
+			if err != nil {
+				return err
+			}
+		}
+
+		// load extra fields
+		err := LoadTableExtraFields(args, typeTpl)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func LoadTableExtraFields(args *ArgType, typeTpl *Type) error {
 	arr := strings.Split(typeTpl.Table.TableComment, "\n")
 	if len(arr) == 0 {
@@ -19,15 +39,60 @@ func LoadTableExtraFields(args *ArgType, typeTpl *Type) error {
 			return err
 		}
 
-		typeTpl.ExtraFields = append(typeTpl.ExtraFields, &ExtraField{
-			Name:     data["name"],
-			Type:     data["type"],
-			JsonName: snaker.CamelToSnake(data["name"]),
-			Comment:  line,
-		})
+		var extraField *ExtraField
+		if ref, ok := data["ref"]; ok {
+			selfKey, otherTable, otherKey := parseExtraRef(ref)
+			index, err := getIndex(otherTable, otherKey)
+			if err != nil {
+				return err
+			}
+
+			t := typeFromIndex(index)
+			extraField = &ExtraField{
+				Field: &Field{
+					Name:    data["name"],
+					Type:    t,
+					Comment: line,
+
+					Ref: &Ref{
+						Type:          t,
+						RefTableName:  snaker.SnakeToCamelIdentifier(otherTable),
+						RefColumnName: snaker.CamelToSnakeIdentifier(otherKey),
+						RefKeyName:    snaker.SnakeToCamelIdentifier(otherKey),
+						SelfKeyName:   snaker.SnakeToCamelIdentifier(selfKey),
+						FuncName:      index.FuncName,
+						IsUnique:      index.Index.IsUnique,
+					},
+				},
+				JsonName: snaker.CamelToSnake(data["name"]),
+			}
+		} else {
+			extraField = &ExtraField{
+				Field: &Field{
+					Name:    data["name"],
+					Type:    data["type"],
+					Comment: line,
+
+					Ref: nil,
+				},
+				JsonName: snaker.CamelToSnake(data["name"]),
+			}
+		}
+
+		typeTpl.ExtraFields = append(typeTpl.ExtraFields, extraField)
 	}
 
 	return nil
+}
+
+// ref should be "selfKey#otherTable.otherKey"
+func parseExtraRef(ref string) (string, string, string) {
+	arr := strings.Split(ref, "#")
+	selfKey := arr[0]
+	arr = strings.Split(arr[1], ".")
+
+	//selfKey, otherTable, otherKey
+	return selfKey, arr[0], arr[1]
 }
 
 func parseData(line string) (map[string]string, error) {
@@ -59,6 +124,34 @@ func parseData(line string) (map[string]string, error) {
 	return result, nil
 }
 
+func getIndex(table string, column string) (*Index, error) {
+	for _, index := range s_indexMap {
+		if index.Type.Table.TableName != table {
+			continue
+		}
+
+		if len(index.Fields) != 1 {
+			continue
+		}
+
+		if index.Fields[0].Col.ColumnName != column {
+			continue
+		}
+
+		return index, nil
+	}
+
+	return nil, fmt.Errorf("index `%v` in table `%v` not exists", column, table)
+}
+
+func typeFromIndex(index *Index) string {
+	if index.Index.IsUnique {
+		return "*" + index.Type.Name
+	}
+
+	return "[]*" + index.Type.Name
+}
+
 func LoadColumnType(args *ArgType, field *Field) error {
 	data, err := parseData(field.Col.ColumnComment)
 	if len(data) == 0 || err != nil {
@@ -72,13 +165,20 @@ func LoadColumnType(args *ArgType, field *Field) error {
 			return fmt.Errorf("wrong param: %s", field.Col.ColumnComment)
 		}
 
-		field.Ref = &Ref{
-			Type:       "*" + SingularizeTableName(tk[0], args.KeepTablePrefix),
-			TableName:  snaker.SnakeToCamelIdentifier(tk[0]),
-			ColumnName: snaker.CamelToSnakeIdentifier(tk[1]),
-			KeyName:    snaker.SnakeToCamelIdentifier(tk[1]),
+		index, err := getIndex(tk[0], tk[1])
+		if err != nil {
+			return err
 		}
-		field.Ref.FuncName = field.Ref.TableName + "By" + field.Ref.KeyName
+
+		field.Ref = &Ref{
+			Type:          typeFromIndex(index),
+			RefTableName:  snaker.SnakeToCamelIdentifier(tk[0]),
+			RefColumnName: snaker.CamelToSnakeIdentifier(tk[1]),
+			RefKeyName:    snaker.SnakeToCamelIdentifier(tk[1]),
+			SelfKeyName:   field.Name,
+			FuncName:      index.FuncName,
+			IsUnique:      index.Index.IsUnique,
+		}
 
 		field.Name = data["name"]
 		field.Type = field.Ref.Type

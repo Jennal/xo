@@ -1,6 +1,8 @@
 {{- $short := (shortname .Name "err" "res" "sqlstr" "db" "XOLog") -}}
 {{- $table := (schema .Schema .Table.TableName) -}}
 {{- $reflist := (reflist .) -}}
+{{- $reflistwithoutextra := (reflistwithoutextra .) -}}
+{{- $reflistextra := (reflistextra .) -}}
 {{- $convlist := (convlist .) -}}
 {{- if .Comment -}}
 // {{ .Comment }}
@@ -30,6 +32,13 @@ type {{ .Name }} struct {
 		{{ .Conv.JsFieldName }} string `json:"-"` // {{ .Col.ColumnName }}
 	{{- end }}
 {{- end }}
+}
+
+// NewEmpty{{ .Name }} create empty instance
+func NewEmpty{{ .Name }}() *{{ .Name }} {
+	{{ $short }} := &{{ .Name }}{}
+	{{ refvalinit . $short }}
+	return {{ $short }}
 }
 
 {{ if .PrimaryKey }}
@@ -64,16 +73,18 @@ func ({{ $short }} *{{ .Name }}) Insert(db XODB) error {
 	{{- end }}
 {{- end }}
 
-{{ if $reflist }}
-	// insert ref list
-	{{- range $reflist }}
-		if {{ $short }}.{{ .Name }} != nil {
+{{ if $reflistwithoutextra }}
+	// insert ref list, unique only
+	{{- range $reflistwithoutextra }}
+		{{- if .Ref.IsUnique }}
+		if {{ $short }}.{{ .Name }} != nil && {{ $short }}.{{ .Name }}.{{ .Ref.RefKeyName }} != 0 {
 			if err := {{ $short }}.{{ .Name }}.Insert(db); err != nil {
 				return err
 			}
 		} else {
-			{{ $short }}.{{ .Name }} = &{{ puretype .Type }}{}
+			{{ $short }}.{{ .Name }} = NewEmpty{{ puretype .Ref.Type }}()
 		}
+		{{ end }}
 	{{ end }}
 {{ end }}
 
@@ -118,6 +129,30 @@ func ({{ $short }} *{{ .Name }}) Insert(db XODB) error {
 	// set primary key and existence
 	{{ $short }}.{{ .PrimaryKey.Name }} = {{ .PrimaryKey.Type }}(id)
 	{{ $short }}._exists = true
+
+	{{ if $reflistextra }}
+		// insert ref list, unique only
+		{{- range $reflistextra }}
+			{{- if .Ref.IsUnique }}
+			if {{ $short }}.{{ .Name }} != nil && {{ $short }}.{{ .Name }}.{{ .Ref.RefKeyName }} != 0 {
+				if err := {{ $short }}.{{ .Name }}.Insert(db); err != nil {
+					return err
+				}
+			} else {
+				{{ $short }}.{{ .Name }} = NewEmpty{{ puretype .Ref.Type }}
+			}
+			{{ else }}
+			if {{ $short }}.{{ .Name }} != nil {
+				for _, item := range {{ $short }}.{{ .Name }} {
+					item.{{ .Ref.RefKeyName }} = {{ $short }}.{{ .Ref.SelfKeyName }}
+					if err := item.Insert(db); err != nil {
+						return err
+					}
+				}
+			}
+			{{ end }}
+		{{ end }}
+	{{- end }}
 {{ end }}
 
 	return nil
@@ -179,11 +214,21 @@ func ({{ $short }} *{{ .Name }}) Insert(db XODB) error {
 {{ if $reflist }}
 	// update ref list
 	{{- range $reflist }}
+		{{ if .Ref.IsUnique }}
 		if {{ $short }}.{{ .Name }} != nil {
 			if err := {{ $short }}.{{ .Name }}.Update(db); err != nil {
 				return err
 			}
 		}
+		{{ else }}
+		if {{ $short }}.{{ .Name }} != nil {
+			for _, item := range {{ $short }}.{{ .Name }} {
+				if err := item.Update(db); err != nil {
+					return err
+				}
+			}
+		}
+		{{ end }}
 	{{ end }}
 {{ end }}
 
@@ -244,11 +289,21 @@ func ({{ $short }} *{{ .Name }}) Delete(db XODB) error {
 {{ if $reflist }}
 	// delete ref list
 	{{- range $reflist }}
+		{{ if .Ref.IsUnique }}
 		if {{ $short }}.{{ .Name }} != nil {
 			if err := {{ $short }}.{{ .Name }}.Delete(db); err != nil {
 				return err
 			}
 		}
+		{{ else }}
+		if {{ $short }}.{{ .Name }} != nil {
+			for _, item := range {{ $short }}.{{ .Name }} {
+				if err := item.Delete(db); err != nil {
+					return err
+				}
+			}
+		}
+		{{ end }}
 	{{ end }}
 {{ end }}
 

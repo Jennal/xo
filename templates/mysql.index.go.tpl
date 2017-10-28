@@ -38,10 +38,8 @@ func {{ .FuncName }}(db XODB{{ goparamlist .Fields true true }}) ({{ if not .Ind
 		{{- range $convlist }}
 			{{ $short }}.{{ .Name }} = &{{ puretype .Type }}{}
 			if len({{ $short }}.{{ .Conv.JsFieldName }}) > 0 {
-				err = json.Unmarshal([]byte({{ $short }}.{{ .Conv.JsFieldName }}), {{ $short }}.{{ .Name }})
-				if err != nil {
-					return nil, err
-				}
+				//no care about error
+				json.Unmarshal([]byte({{ $short }}.{{ .Conv.JsFieldName }}), {{ $short }}.{{ .Name }})
 			}
 
 		{{- end }}

@@ -34,6 +34,27 @@ func TestInsert(t *testing.T) {
 			Int64: 23,
 			Valid: true,
 		},
+
+		Properties: []*UserProperty{
+			&UserProperty{
+				Nickname: sql.NullString{
+					String: "name1",
+					Valid:  true,
+				},
+			},
+			&UserProperty{
+				Nickname: sql.NullString{
+					String: "name2",
+					Valid:  true,
+				},
+			},
+			&UserProperty{
+				Nickname: sql.NullString{
+					String: "name3",
+					Valid:  true,
+				},
+			},
+		},
 	}
 
 	err = u.Save(db)
@@ -46,7 +67,7 @@ func TestGet(t *testing.T) {
 	assert.Nil(t, err)
 	defer db.Close()
 
-	u, err := UserByID(db, 3)
+	u, err := UserByID(db, 8)
 	assert.NotNil(t, u)
 	assert.Nil(t, err)
 

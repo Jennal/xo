@@ -21,11 +21,21 @@ type User struct {
 	_exists, _deleted bool
 
 	// extra fields
-	ExName string `json:"ex_name"` // `xo:name=ExName,type=string` 新增ExName字段
-	ExAge  int    `json:"ex_age"`  // `xo:name=ExAge,type=int` 新增ExAge字段
+	ExName     string          `json:"ex_name"`    // `xo:name=ExName,type=string` 新增ExName字段
+	ExAge      int             `json:"ex_age"`     // `xo:name=ExAge,type=int` 新增ExAge字段
+	Properties []*UserProperty `json:"properties"` // `xo:name=Properties,ref=id#user_property.user_id` 新增Properties字段
 
 	// json fields
 	jsProp2 string `json:"-"` // prop2
+}
+
+// NewEmptyUser create empty instance
+func NewEmptyUser() *User {
+	u := &User{}
+	u.Property = NewEmptyUserProperty()
+	u.Properties = []*UserProperty{}
+
+	return u
 }
 
 // Exists determines if the User exists in the database.
@@ -53,13 +63,13 @@ func (u *User) Insert(db XODB) error {
 	}
 	u.jsProp2 = string(buf)
 
-	// insert ref list
-	if u.Property != nil {
+	// insert ref list, unique only
+	if u.Property != nil && u.Property.ID != 0 {
 		if err := u.Property.Insert(db); err != nil {
 			return err
 		}
 	} else {
-		u.Property = &UserProperty{}
+		u.Property = NewEmptyUserProperty()
 	}
 
 	// sql insert query, primary key provided by autoincrement
@@ -85,6 +95,16 @@ func (u *User) Insert(db XODB) error {
 	// set primary key and existence
 	u.ID = int(id)
 	u._exists = true
+
+	// insert ref list, unique only
+	if u.Properties != nil {
+		for _, item := range u.Properties {
+			item.UserID = u.ID
+			if err := item.Insert(db); err != nil {
+				return err
+			}
+		}
+	}
 
 	return nil
 }
@@ -122,9 +142,18 @@ func (u *User) Update(db XODB) error {
 	}
 
 	// update ref list
+
 	if u.Property != nil {
 		if err := u.Property.Update(db); err != nil {
 			return err
+		}
+	}
+
+	if u.Properties != nil {
+		for _, item := range u.Properties {
+			if err := item.Update(db); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -168,9 +197,18 @@ func (u *User) Delete(db XODB) error {
 	u._deleted = true
 
 	// delete ref list
+
 	if u.Property != nil {
 		if err := u.Property.Delete(db); err != nil {
 			return err
+		}
+	}
+
+	if u.Properties != nil {
+		for _, item := range u.Properties {
+			if err := item.Delete(db); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -196,7 +234,8 @@ func UserByID(db XODB, id int) (*User, error) {
 	}
 
 	// ref init
-	u.Property = &UserProperty{}
+	u.Property = NewEmptyUserProperty()
+	u.Properties = []*UserProperty{}
 
 	err = db.QueryRow(sqlstr, id).Scan(&u.ID, &u.Property.ID, &u.jsProp2, &u.Name, &u.Age)
 	if err != nil {
@@ -204,18 +243,16 @@ func UserByID(db XODB, id int) (*User, error) {
 	}
 
 	// ref load
+	//no care about error
 	u.Property, err = UserPropertyByID(db, u.Property.ID)
-	if err != nil {
-		return nil, err
-	}
+	//no care about error
+	u.Properties, _ = UserPropertiesByUserID(db, u.ID)
 
 	// json fields
 	u.Prop2 = &Prop2{}
 	if len(u.jsProp2) > 0 {
-		err = json.Unmarshal([]byte(u.jsProp2), u.Prop2)
-		if err != nil {
-			return nil, err
-		}
+		//no care about error
+		json.Unmarshal([]byte(u.jsProp2), u.Prop2)
 	}
 
 	return &u, nil

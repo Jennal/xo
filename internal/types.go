@@ -109,11 +109,13 @@ type Proc struct {
 
 // Ref describe a field is a reference to other table type
 type Ref struct {
-	Type       string
-	TableName  string
-	ColumnName string
-	FuncName   string
-	KeyName    string
+	Type          string
+	RefTableName  string
+	RefColumnName string
+	RefKeyName    string
+	SelfKeyName   string
+	FuncName      string
+	IsUnique      bool
 }
 
 // Conv describe a field value is converted by a method
@@ -136,10 +138,8 @@ type Field struct {
 
 // ExtraField is parsed from comment of table
 type ExtraField struct {
-	Name     string
-	Type     string
+	*Field
 	JsonName string
-	Comment  string
 }
 
 // Type is a template item for a type (ie, table/view/custom query).

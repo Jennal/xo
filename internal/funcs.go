@@ -13,32 +13,34 @@ import (
 // NewTemplateFuncs returns a set of template funcs bound to the supplied args.
 func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
-		"colcount":           a.colcount,
-		"colnames":           a.colnames,
-		"colnamesmulti":      a.colnamesmulti,
-		"colnamesquery":      a.colnamesquery,
-		"colnamesquerymulti": a.colnamesquerymulti,
-		"colprefixnames":     a.colprefixnames,
-		"colvals":            a.colvals,
-		"colvalsmulti":       a.colvalsmulti,
-		"fieldnames":         a.fieldnames,
-		"fieldnamesmulti":    a.fieldnamesmulti,
-		"goparamlist":        a.goparamlist,
-		"reniltype":          a.reniltype,
-		"retype":             a.retype,
-		"shortname":          a.shortname,
-		"convext":            a.convext,
-		"schema":             a.schemafn,
-		"colname":            a.colname,
-		"hascolumn":          a.hascolumn,
-		"hasfield":           a.hasfield,
-		"getstartcount":      a.getstartcount,
-		"jsonname":           a.jsonname,
-		"refvalinit":         a.refvalinit,
-		"reffillval":         a.reffillval,
-		"reflist":            a.reflist,
-		"convlist":           a.convlist,
-		"puretype":           a.puretype,
+		"colcount":            a.colcount,
+		"colnames":            a.colnames,
+		"colnamesmulti":       a.colnamesmulti,
+		"colnamesquery":       a.colnamesquery,
+		"colnamesquerymulti":  a.colnamesquerymulti,
+		"colprefixnames":      a.colprefixnames,
+		"colvals":             a.colvals,
+		"colvalsmulti":        a.colvalsmulti,
+		"fieldnames":          a.fieldnames,
+		"fieldnamesmulti":     a.fieldnamesmulti,
+		"goparamlist":         a.goparamlist,
+		"reniltype":           a.reniltype,
+		"retype":              a.retype,
+		"shortname":           a.shortname,
+		"convext":             a.convext,
+		"schema":              a.schemafn,
+		"colname":             a.colname,
+		"hascolumn":           a.hascolumn,
+		"hasfield":            a.hasfield,
+		"getstartcount":       a.getstartcount,
+		"jsonname":            a.jsonname,
+		"refvalinit":          a.refvalinit,
+		"reffillval":          a.reffillval,
+		"reflist":             a.reflist,
+		"reflistwithoutextra": a.reflistwithoutextra,
+		"reflistextra":        a.reflistextra,
+		"convlist":            a.convlist,
+		"puretype":            a.puretype,
 	}
 }
 
@@ -397,7 +399,7 @@ func (a *ArgType) fieldnames(fields []*Field, prefix string, ignoreNames ...stri
 		}
 
 		if f.Ref != nil {
-			str = str + prefix + "." + f.Name + "." + f.Ref.KeyName
+			str = str + prefix + "." + f.Name + "." + f.Ref.RefKeyName
 		} else if f.Conv != nil {
 			str = str + prefix + "." + f.Conv.JsFieldName
 		} else {
@@ -432,7 +434,7 @@ func (a *ArgType) fieldnamesmulti(fields []*Field, prefix string, ignoreNames []
 		}
 
 		if f.Ref != nil {
-			str = str + prefix + "." + f.Name + "." + f.Ref.KeyName
+			str = str + prefix + "." + f.Name + "." + f.Ref.RefKeyName
 		} else if f.Conv != nil {
 			str = str + prefix + "." + f.Conv.JsFieldName
 		} else {
@@ -676,9 +678,31 @@ func (a *ArgType) refvalinit(tableType *Type, short string) string {
 			continue
 		}
 
-		result += fmt.Sprintf("%s.%s = &%s{}\n",
-			short, field.Name, strings.Replace(field.Ref.Type, "*", "", -1),
-		)
+		if field.Ref.IsUnique {
+			result += fmt.Sprintf("%s.%s = NewEmpty%s()\n",
+				short, field.Name, a.puretype(field.Ref.Type),
+			)
+		} else {
+			result += fmt.Sprintf("%s.%s = %s{}\n",
+				short, field.Name, field.Ref.Type,
+			)
+		}
+	}
+
+	for _, field := range tableType.ExtraFields {
+		if field.Ref == nil {
+			continue
+		}
+
+		if field.Ref.IsUnique {
+			result += fmt.Sprintf("%s.%s = NewEmpty%s()\n",
+				short, field.Name, a.puretype(field.Ref.Type),
+			)
+		} else {
+			result += fmt.Sprintf("%s.%s = %s{}\n",
+				short, field.Name, field.Ref.Type,
+			)
+		}
 	}
 
 	return result
@@ -692,15 +716,47 @@ func (a *ArgType) reffillval(tableType *Type, short string, db string) string {
 			continue
 		}
 
-		result += fmt.Sprintf(`%s.%s, err = %s(%s, %s.%s.%s)
-if err != nil {
-	return nil, err
-}
+		if field.Ref.IsUnique {
+			result += fmt.Sprintf(`//no care about error
+%s.%s, err = %s(%s, %s.%s.%s)
 `,
-			short, field.Name,
-			field.Ref.FuncName, db,
-			short, field.Name, field.Ref.KeyName,
-		)
+				short, field.Name,
+				field.Ref.FuncName, db,
+				short, field.Name, field.Ref.RefKeyName,
+			)
+		} else {
+			result += fmt.Sprintf(`//no care about error
+%s.%s, _ = %s(%s, %s.%s)
+`,
+				short, field.Name,
+				field.Ref.FuncName, db,
+				short, field.Ref.SelfKeyName,
+			)
+		}
+	}
+
+	for _, field := range tableType.ExtraFields {
+		if field.Ref == nil {
+			continue
+		}
+
+		if field.Ref.IsUnique {
+			result += fmt.Sprintf(`//no care about error
+%s.%s, _ = %s(%s, %s.%s.%s)
+`,
+				short, field.Name,
+				field.Ref.FuncName, db,
+				short, field.Name, field.Ref.RefKeyName,
+			)
+		} else {
+			result += fmt.Sprintf(`//no care about error
+%s.%s, _ = %s(%s, %s.%s)
+`,
+				short, field.Name,
+				field.Ref.FuncName, db,
+				short, field.Ref.SelfKeyName,
+			)
+		}
 	}
 
 	return result
@@ -717,9 +773,45 @@ func (a *ArgType) reflist(tableType *Type) interface{} {
 		result = append(result, field)
 	}
 
+	for _, field := range tableType.ExtraFields {
+		if field.Ref == nil {
+			continue
+		}
+
+		result = append(result, field.Field)
+	}
+
 	// spew.Dump(result)
 	return result
 	// return spew.Sdump(result)
+}
+
+func (a *ArgType) reflistwithoutextra(tableType *Type) interface{} {
+	result := []*Field{}
+
+	for _, field := range tableType.Fields {
+		if field.Ref == nil {
+			continue
+		}
+
+		result = append(result, field)
+	}
+
+	return result
+}
+
+func (a *ArgType) reflistextra(tableType *Type) interface{} {
+	result := []*Field{}
+
+	for _, field := range tableType.ExtraFields {
+		if field.Ref == nil {
+			continue
+		}
+
+		result = append(result, field.Field)
+	}
+
+	return result
 }
 
 func (a *ArgType) convlist(tableType *Type) interface{} {
@@ -739,8 +831,12 @@ func (a *ArgType) convlist(tableType *Type) interface{} {
 }
 
 func (a *ArgType) puretype(t string) string {
+	if strings.HasPrefix(t, "[]") {
+		t = a.puretype(t[2:])
+	}
+
 	if strings.HasPrefix(t, "*") {
-		return a.puretype(t[1:])
+		t = a.puretype(t[1:])
 	}
 
 	return t
