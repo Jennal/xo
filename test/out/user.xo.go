@@ -11,7 +11,7 @@ import (
 
 // User represents a row from '`testxo`.`user`'.
 type User struct {
-	ID       int            `json:"id"`       // id
+	ID       int32          `json:"id"`       // id
 	Property *UserProperty  `json:"property"` // prop_id `xo:ref=user_property.id,name=Property` 绑定user_property表的id
 	Prop2    *Prop2         `json:"prop2"`    // prop2 `xo:conv=json,type=*Prop2` 利用json编码解码
 	Name     sql.NullString `json:"name"`     // name
@@ -40,7 +40,7 @@ func NewEmptyUser() *User {
 
 // Get Funcs
 
-func (u *User) GetID() int {
+func (u *User) GetID() int32 {
 	if u == nil {
 		return 0
 	}
@@ -157,7 +157,7 @@ func (u *User) Insert(db XODB) error {
 	}
 
 	// set primary key and existence
-	u.ID = int(id)
+	u.ID = int32(id)
 	u._exists = true
 
 	// insert ref list, unique only
@@ -282,7 +282,7 @@ func (u *User) Delete(db XODB) error {
 // UserByID retrieves a row from '`testxo`.`user`' as a User.
 //
 // Generated from index 'user_id_pkey'.
-func UserByID(db XODB, id int) (*User, error) {
+func UserByID(db XODB, id int32) (*User, error) {
 	var err error
 
 	// sql query

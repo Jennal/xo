@@ -869,5 +869,9 @@ func (a *ArgType) defaultval(t *Field) string {
 		return "\"\""
 	}
 
+	if strings.HasPrefix(t.Type, "sql.Null") {
+		return t.Type + "{}"
+	}
+
 	return "nil"
 }

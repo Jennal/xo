@@ -10,8 +10,8 @@ import (
 
 // UserProperty represents a row from '`testxo`.`user_property`'.
 type UserProperty struct {
-	ID       int            `json:"id"`       // id
-	UserID   int            `json:"user_id"`  // user_id
+	ID       int32          `json:"id"`       // id
+	UserID   int32          `json:"user_id"`  // user_id
 	Nickname sql.NullString `json:"nickname"` // nickname
 
 	// xo fields
@@ -27,7 +27,7 @@ func NewEmptyUserProperty() *UserProperty {
 
 // Get Funcs
 
-func (up *UserProperty) GetID() int {
+func (up *UserProperty) GetID() int32 {
 	if up == nil {
 		return 0
 	}
@@ -35,7 +35,7 @@ func (up *UserProperty) GetID() int {
 	return up.ID
 }
 
-func (up *UserProperty) GetUserID() int {
+func (up *UserProperty) GetUserID() int32 {
 	if up == nil {
 		return 0
 	}
@@ -91,7 +91,7 @@ func (up *UserProperty) Insert(db XODB) error {
 	}
 
 	// set primary key and existence
-	up.ID = int(id)
+	up.ID = int32(id)
 	up._exists = true
 
 	return nil
@@ -168,7 +168,7 @@ func (up *UserProperty) Delete(db XODB) error {
 // UserPropertiesByUserID retrieves a row from '`testxo`.`user_property`' as a UserProperty.
 //
 // Generated from index 'idx_user_id'.
-func UserPropertiesByUserID(db XODB, userID int) ([]*UserProperty, error) {
+func UserPropertiesByUserID(db XODB, userID int32) ([]*UserProperty, error) {
 	var err error
 
 	// sql query
@@ -211,7 +211,7 @@ func UserPropertiesByUserID(db XODB, userID int) ([]*UserProperty, error) {
 // UserPropertyByID retrieves a row from '`testxo`.`user_property`' as a UserProperty.
 //
 // Generated from index 'user_property_id_pkey'.
-func UserPropertyByID(db XODB, id int) (*UserProperty, error) {
+func UserPropertyByID(db XODB, id int32) (*UserProperty, error) {
 	var err error
 
 	// sql query
