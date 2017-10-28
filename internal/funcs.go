@@ -41,6 +41,7 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"reflistextra":        a.reflistextra,
 		"convlist":            a.convlist,
 		"puretype":            a.puretype,
+		"defaultval":          a.defaultval,
 	}
 }
 
@@ -399,7 +400,11 @@ func (a *ArgType) fieldnames(fields []*Field, prefix string, ignoreNames ...stri
 		}
 
 		if f.Ref != nil {
-			str = str + prefix + "." + f.Name + "." + f.Ref.RefKeyName
+			if strings.HasPrefix(prefix, "&") {
+				str = str + prefix + "." + f.Name + "." + f.Ref.RefKeyName
+			} else {
+				str = str + prefix + ".Get" + f.Name + "().Get" + f.Ref.RefKeyName + "()"
+			}
 		} else if f.Conv != nil {
 			str = str + prefix + "." + f.Conv.JsFieldName
 		} else {
@@ -434,7 +439,11 @@ func (a *ArgType) fieldnamesmulti(fields []*Field, prefix string, ignoreNames []
 		}
 
 		if f.Ref != nil {
-			str = str + prefix + "." + f.Name + "." + f.Ref.RefKeyName
+			if strings.HasPrefix(prefix, "&") {
+				str = str + prefix + "." + f.Name + "." + f.Ref.RefKeyName
+			} else {
+				str = str + prefix + ".Get" + f.Name + "().Get" + f.Ref.RefKeyName + "()"
+			}
 		} else if f.Conv != nil {
 			str = str + prefix + "." + f.Conv.JsFieldName
 		} else {
@@ -840,4 +849,25 @@ func (a *ArgType) puretype(t string) string {
 	}
 
 	return t
+}
+
+func (a *ArgType) defaultval(t *Field) string {
+	if len(t.NilType) > 0 &&
+		!strings.HasPrefix(t.Type, "*") &&
+		!strings.HasPrefix(t.Type, "[]") {
+		return t.NilType
+	}
+
+	switch t.Type {
+	case "int", "uint", "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64":
+		return "0"
+	case "float", "float64":
+		return "0.0"
+	case "bool":
+		return "false"
+	case "string":
+		return "\"\""
+	}
+
+	return "nil"
 }

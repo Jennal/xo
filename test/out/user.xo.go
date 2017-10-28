@@ -38,6 +38,72 @@ func NewEmptyUser() *User {
 	return u
 }
 
+// Get Funcs
+
+func (u *User) GetID() int {
+	if u == nil {
+		return 0
+	}
+
+	return u.ID
+}
+
+func (u *User) GetProperty() *UserProperty {
+	if u == nil {
+		return nil
+	}
+
+	return u.Property
+}
+
+func (u *User) GetProp2() *Prop2 {
+	if u == nil {
+		return nil
+	}
+
+	return u.Prop2
+}
+
+func (u *User) GetName() sql.NullString {
+	if u == nil {
+		return sql.NullString{}
+	}
+
+	return u.Name
+}
+
+func (u *User) GetAge() sql.NullInt64 {
+	if u == nil {
+		return sql.NullInt64{}
+	}
+
+	return u.Age
+}
+
+func (u *User) GetExName() string {
+	if u == nil {
+		return ""
+	}
+
+	return u.ExName
+}
+
+func (u *User) GetExAge() int {
+	if u == nil {
+		return 0
+	}
+
+	return u.ExAge
+}
+
+func (u *User) GetProperties() []*UserProperty {
+	if u == nil {
+		return nil
+	}
+
+	return u.Properties
+}
+
 // Exists determines if the User exists in the database.
 func (u *User) Exists() bool {
 	return u._exists
@@ -64,12 +130,10 @@ func (u *User) Insert(db XODB) error {
 	u.jsProp2 = string(buf)
 
 	// insert ref list, unique only
-	if u.Property != nil && u.Property.ID != 0 {
+	if u.Property != nil {
 		if err := u.Property.Insert(db); err != nil {
 			return err
 		}
-	} else {
-		u.Property = NewEmptyUserProperty()
 	}
 
 	// sql insert query, primary key provided by autoincrement
@@ -80,8 +144,8 @@ func (u *User) Insert(db XODB) error {
 		")"
 
 	// run query
-	XOLog(sqlstr, u.Property.ID, u.jsProp2, u.Name, u.Age)
-	res, err := db.Exec(sqlstr, u.Property.ID, u.jsProp2, u.Name, u.Age)
+	XOLog(sqlstr, u.GetProperty().GetID(), u.jsProp2, u.Name, u.Age)
+	res, err := db.Exec(sqlstr, u.GetProperty().GetID(), u.jsProp2, u.Name, u.Age)
 	if err != nil {
 		return err
 	}
@@ -135,8 +199,8 @@ func (u *User) Update(db XODB) error {
 		" WHERE `id` = ?"
 
 	// run query
-	XOLog(sqlstr, u.Property.ID, u.jsProp2, u.Name, u.Age, u.ID)
-	_, err = db.Exec(sqlstr, u.Property.ID, u.jsProp2, u.Name, u.Age, u.ID)
+	XOLog(sqlstr, u.GetProperty().GetID(), u.jsProp2, u.Name, u.Age, u.ID)
+	_, err = db.Exec(sqlstr, u.GetProperty().GetID(), u.jsProp2, u.Name, u.Age, u.ID)
 	if err != nil {
 		return err
 	}

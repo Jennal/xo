@@ -25,6 +25,32 @@ func NewEmptyUserProperty() *UserProperty {
 	return up
 }
 
+// Get Funcs
+
+func (up *UserProperty) GetID() int {
+	if up == nil {
+		return 0
+	}
+
+	return up.ID
+}
+
+func (up *UserProperty) GetUserID() int {
+	if up == nil {
+		return 0
+	}
+
+	return up.UserID
+}
+
+func (up *UserProperty) GetNickname() sql.NullString {
+	if up == nil {
+		return sql.NullString{}
+	}
+
+	return up.Nickname
+}
+
 // Exists determines if the UserProperty exists in the database.
 func (up *UserProperty) Exists() bool {
 	return up._exists

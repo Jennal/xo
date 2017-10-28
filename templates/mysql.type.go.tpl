@@ -1,5 +1,6 @@
 {{- $short := (shortname .Name "err" "res" "sqlstr" "db" "XOLog") -}}
 {{- $table := (schema .Schema .Table.TableName) -}}
+{{- $typename := .Name -}}
 {{- $reflist := (reflist .) -}}
 {{- $reflistwithoutextra := (reflistwithoutextra .) -}}
 {{- $reflistextra := (reflistextra .) -}}
@@ -41,6 +42,27 @@ func NewEmpty{{ .Name }}() *{{ .Name }} {
 	return {{ $short }}
 }
 
+// Get Funcs
+{{ range .Fields }}
+func ({{ $short }} *{{ $typename }}) Get{{ .Name }}() {{ .Type }} {
+	if {{ $short }} == nil {
+		return {{ defaultval . }}
+	}
+
+	return {{ $short }}.{{ .Name }}
+}
+{{ end }}
+
+{{ range .ExtraFields }}
+func ({{ $short }} *{{ $typename }}) Get{{ .Name }}() {{ .Type }} {
+	if {{ $short }} == nil {
+		return {{ defaultval .Field }}
+	}
+
+	return {{ $short }}.{{ .Name }}
+}
+{{ end }}
+
 {{ if .PrimaryKey }}
 // Exists determines if the {{ .Name }} exists in the database.
 func ({{ $short }} *{{ .Name }}) Exists() bool {
@@ -77,12 +99,10 @@ func ({{ $short }} *{{ .Name }}) Insert(db XODB) error {
 	// insert ref list, unique only
 	{{- range $reflistwithoutextra }}
 		{{- if .Ref.IsUnique }}
-		if {{ $short }}.{{ .Name }} != nil && {{ $short }}.{{ .Name }}.{{ .Ref.RefKeyName }} != 0 {
+		if {{ $short }}.{{ .Name }} != nil {
 			if err := {{ $short }}.{{ .Name }}.Insert(db); err != nil {
 				return err
 			}
-		} else {
-			{{ $short }}.{{ .Name }} = NewEmpty{{ puretype .Ref.Type }}()
 		}
 		{{ end }}
 	{{ end }}
@@ -134,12 +154,11 @@ func ({{ $short }} *{{ .Name }}) Insert(db XODB) error {
 		// insert ref list, unique only
 		{{- range $reflistextra }}
 			{{- if .Ref.IsUnique }}
-			if {{ $short }}.{{ .Name }} != nil && {{ $short }}.{{ .Name }}.{{ .Ref.RefKeyName }} != 0 {
+			if {{ $short }}.{{ .Name }} != nil {
+				{{ $short }}.{{ .Name }}.{{ .Ref.RefKeyName }} = {{ $short }}.{{ .Ref.SelfKeyName }}
 				if err := {{ $short }}.{{ .Name }}.Insert(db); err != nil {
 					return err
 				}
-			} else {
-				{{ $short }}.{{ .Name }} = NewEmpty{{ puretype .Ref.Type }}
 			}
 			{{ else }}
 			if {{ $short }}.{{ .Name }} != nil {

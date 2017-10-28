@@ -80,7 +80,7 @@ func TestUpdate(t *testing.T) {
 	assert.Nil(t, err)
 	defer db.Close()
 
-	u, err := UserByID(db, 3)
+	u, err := UserByID(db, 10)
 	assert.NotNil(t, u)
 	assert.Nil(t, err)
 
@@ -98,7 +98,7 @@ func TestDelete(t *testing.T) {
 	assert.Nil(t, err)
 	defer db.Close()
 
-	u, err := UserByID(db, 4)
+	u, err := UserByID(db, 10)
 	assert.NotNil(t, u)
 	assert.Nil(t, err)
 
