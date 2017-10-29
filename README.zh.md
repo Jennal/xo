@@ -1,6 +1,87 @@
-# About fork xo
+# Fork xo 增加的功能
 
-[中文说明](README.zh.md)
+[For English](README.md)
+
+## 增加命令行参数
+
+### --keep-table-prefix
+
+如果带了这个参数，则生成的表格类型名称，将保留前缀。谨献给洁癖爱好者。
+
+例如：`cf_game_config`表，将生成`CF_GameConfig`。
+
+###	--include-table-prefix IncludeTablePrefix
+
+这个参数指定前缀，仅生成表名带有该前缀的表格。
+
+例如：`--include-table-prefix cf_` 仅生成表名为`cf_`开头的表格。
+
+## 增加通过注释绑定自定义类型
+
+实例请参考：[test](test)
+
+无论是表注释，或者是字段注释，如果包含类似`golang`的`tag`，并且以`xo:`开头，将被当做自定义类型进行生成。
+
+### 表注释
+
+#### 添加表字段之外的成员变量
+
+```golang
+`xo:name=ExName,type=string` 新增ExName字段
+```
+
+将生成字段
+
+```golang
+ExName     string          `json:"ex_name"`    // `xo:name=ExName,type=string` 新增ExName字段
+```
+
+#### 增加通过虚拟外键关联的成员变量
+
+```golang
+`xo:name=Properties,ref=id#user_property.user_id` 新增Properties字段
+```
+
+将生成字段
+
+```golang
+Properties []*UserProperty `json:"properties"` // `xo:name=Properties,ref=id#user_property.user_id` 新增Properties字段
+```
+
+其中`ref`的内容包括3个元素
+
+```
+{本表的字段}#{绑定的表格}.{绑定表格对应的字段}
+```
+
+需要注意的是`绑定表格对应的字段`必须建索引，将根据索引的类型自动推测生成的字段是数组还是单个实例指针。当`绑定表格对应的字段`的索引为`unique`时，生成单个实例指针，否则生成数组。
+
+### 字段注释
+
+#### 外键绑定
+
+```golang
+`xo:ref=user_property.id,name=Property` 绑定user_property表的id
+```
+
+将生成字段
+
+```golang
+Property *UserProperty  `json:"property"` // prop_id `xo:ref=user_property.id,name=Property` 绑定user_property表的id
+```
+
+#### Json自定义类型绑定
+
+```golang
+`xo:conv=json,type=*Prop2` 利用json编码解码
+```
+
+将生成字段
+
+```golang
+Prop2    *Prop2  `json:"prop2"` // prop2 `xo:conv=json,type=*Prop2` 利用json编码解码
+jsProp2  string `json:"-"`      // prop2
+```
 
 # About xo
 
