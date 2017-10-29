@@ -8,9 +8,9 @@ import (
 
 	_ "github.com/lib/pq"
 
-	"github.com/knq/snaker"
 	"github.com/jennal/xo/internal"
 	"github.com/jennal/xo/models"
+	"github.com/knq/snaker"
 )
 
 func init() {
@@ -50,14 +50,14 @@ func PgRelkind(relType internal.RelType) string {
 
 // PgParseType parse a postgres type into a Go type based on the column
 // definition.
-func PgParseType(args *internal.ArgType, dt string, nullable bool) (int, string, string) {
+func PgParseType(args *internal.ArgType, dt string, isenum bool, nullable bool) (int, string, string) {
 	precision := 0
 	nilVal := "nil"
 	asSlice := false
 
 	// handle SETOF
 	if strings.HasPrefix(dt, "SETOF ") {
-		_, _, t := PgParseType(args, dt[len("SETOF "):], false)
+		_, _, t := PgParseType(args, dt[len("SETOF "):], false, false)
 		return 0, "nil", "[]" + t
 	}
 

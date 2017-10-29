@@ -5,9 +5,9 @@ import (
 
 	_ "github.com/denisenkom/go-mssqldb"
 
-	"github.com/knq/snaker"
 	"github.com/jennal/xo/internal"
 	"github.com/jennal/xo/models"
+	"github.com/knq/snaker"
 )
 
 func init() {
@@ -64,7 +64,7 @@ func MsRelkind(relType internal.RelType) string {
 
 // MsParseType parse a mssql type into a Go type based on the column
 // definition.
-func MsParseType(args *internal.ArgType, dt string, nullable bool) (int, string, string) {
+func MsParseType(args *internal.ArgType, dt string, isenum bool, nullable bool) (int, string, string) {
 	precision := 0
 	nilVal := "nil"
 
