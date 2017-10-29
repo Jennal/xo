@@ -42,6 +42,7 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"convlist":            a.convlist,
 		"puretype":            a.puretype,
 		"defaultval":          a.defaultval,
+		"defaultconvval":      a.defaultconvval,
 	}
 }
 
@@ -854,7 +855,8 @@ func (a *ArgType) puretype(t string) string {
 func (a *ArgType) defaultval(t *Field) string {
 	if len(t.NilType) > 0 &&
 		!strings.HasPrefix(t.Type, "*") &&
-		!strings.HasPrefix(t.Type, "[]") {
+		!strings.HasPrefix(t.Type, "[]") &&
+		!strings.HasPrefix(t.Type, "map") {
 		return t.NilType
 	}
 
@@ -874,4 +876,16 @@ func (a *ArgType) defaultval(t *Field) string {
 	}
 
 	return "nil"
+}
+
+func (a *ArgType) defaultconvval(t string) string {
+	if strings.HasPrefix(t, "*") {
+		return "&" + a.puretype(t) + "{}"
+	}
+
+	// if strings.HasPrefix(t, "[]") {
+	// 	return t + "{}"
+	// }
+
+	return t + "{}"
 }

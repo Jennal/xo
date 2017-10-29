@@ -498,6 +498,11 @@ func (tl TypeLoader) LoadRelkind(args *ArgType, relType RelType) (map[string]*Ty
 	// tables
 	tableMap := make(map[string]*Type)
 	for _, ti := range tableList {
+		if args.IncludeTablePrefix != "" &&
+			!strings.HasPrefix(ti.TableName, args.IncludeTablePrefix) {
+			continue
+		}
+
 		// create template
 		typeTpl := &Type{
 			Name:        SingularizeTableName(ti.TableName, args.KeepTablePrefix),

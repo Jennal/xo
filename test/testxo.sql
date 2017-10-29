@@ -29,7 +29,7 @@ CREATE TABLE `user` (
   `name` varchar(45) DEFAULT NULL,
   `age` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8 COMMENT='`xo:name=ExName,type=string` 新增ExName字段\n`xo:name=ExAge,type=int` 新增ExAge字段\n`xo:name=Properties,ref=id#user_property.user_id` 新增Properties字段';
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8 COMMENT='`xo:name=ExName,type=string` 新增ExName字段\n`xo:name=ExAge,type=int` 新增ExAge字段\n`xo:name=Properties,ref=id#user_property.user_id` 新增Properties字段';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -38,7 +38,7 @@ CREATE TABLE `user` (
 
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
-INSERT INTO `user` VALUES (1,0,'{\"Field1\":\"abc\",\"Field2\":123}','name',NULL),(2,0,'{\"Field1\":\"abc\",\"Field2\":123}','name',23),(5,0,'{\"Field1\":\"abc\",\"Field2\":123}','name',23),(6,0,'{\"Field1\":\"abc\",\"Field2\":123}','name',23),(7,0,'{\"Field1\":\"abc\",\"Field2\":123}','name',23);
+INSERT INTO `user` VALUES (1,0,'{\"Field1\":\"abc\",\"Field2\":123}','name',NULL),(2,0,'{\"Field1\":\"abc\",\"Field2\":123}','name',23),(5,0,'{\"Field1\":\"abc\",\"Field2\":123}','name',23),(6,0,'{\"Field1\":\"abc\",\"Field2\":123}','name',23),(7,0,'{\"Field1\":\"abc\",\"Field2\":123}','name',23),(8,0,'{\"Field1\":\"abc\",\"Field2\":123}','name',23),(9,0,'{\"Field1\":\"abc\",\"Field2\":123}','name',23);
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -53,9 +53,10 @@ CREATE TABLE `user_property` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `nickname` varchar(45) DEFAULT NULL,
+  `complete_ids` text NOT NULL COMMENT '`xo:conv=json,type=[]int32` 利用json编码解码',
   PRIMARY KEY (`id`),
   KEY `idx_user_id` (`user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -64,7 +65,7 @@ CREATE TABLE `user_property` (
 
 LOCK TABLES `user_property` WRITE;
 /*!40000 ALTER TABLE `user_property` DISABLE KEYS */;
-INSERT INTO `user_property` VALUES (3,1,'xiaoyu');
+INSERT INTO `user_property` VALUES (3,1,'xiaoyu',''),(4,8,'name1',''),(5,8,'name2',''),(6,8,'name3',''),(7,9,'name1',''),(8,9,'name2',''),(9,9,'name3','');
 /*!40000 ALTER TABLE `user_property` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -77,4 +78,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2017-10-28 19:29:34
+-- Dump completed on 2017-10-29 13:17:20

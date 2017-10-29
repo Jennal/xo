@@ -190,7 +190,7 @@ func LoadColumnType(args *ArgType, field *Field) error {
 
 	// conv
 	if conv, ok := data["conv"]; ok && conv == "json" {
-		field.Type = "*" + SingularizeTableName(data["type"], args.KeepTablePrefix)
+		field.Type = data["type"]
 		field.Conv = &Conv{
 			JsFieldName: "js" + field.Name,
 		}

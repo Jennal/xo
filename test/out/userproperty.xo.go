@@ -5,17 +5,22 @@ package out
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 )
 
 // UserProperty represents a row from '`testxo`.`user_property`'.
 type UserProperty struct {
-	ID       int32          `json:"id"`       // id
-	UserID   int32          `json:"user_id"`  // user_id
-	Nickname sql.NullString `json:"nickname"` // nickname
+	ID          int32          `json:"id"`           // id
+	UserID      int32          `json:"user_id"`      // user_id
+	Nickname    sql.NullString `json:"nickname"`     // nickname
+	CompleteIds []int32        `json:"complete_ids"` // complete_ids `xo:conv=json,type=[]int32` 利用json编码解码
 
 	// xo fields
 	_exists, _deleted bool
+
+	// json fields
+	jsCompleteIds string `json:"-"` // complete_ids
 }
 
 // NewEmptyUserProperty create empty instance
@@ -51,6 +56,14 @@ func (up *UserProperty) GetNickname() sql.NullString {
 	return up.Nickname
 }
 
+func (up *UserProperty) GetCompleteIds() []int32 {
+	if up == nil {
+		return nil
+	}
+
+	return up.CompleteIds
+}
+
 // Exists determines if the UserProperty exists in the database.
 func (up *UserProperty) Exists() bool {
 	return up._exists
@@ -69,17 +82,23 @@ func (up *UserProperty) Insert(db XODB) error {
 	if up._exists {
 		return errors.New("insert failed: already exists")
 	}
+	// json fields
+	buf, err := json.Marshal(up.CompleteIds)
+	if err != nil {
+		return err
+	}
+	up.jsCompleteIds = string(buf)
 
 	// sql insert query, primary key provided by autoincrement
 	const sqlstr = "INSERT INTO `testxo`.`user_property` (" +
-		"`user_id`, `nickname`" +
+		"`user_id`, `nickname`, `complete_ids`" +
 		") VALUES (" +
-		"?, ?" +
+		"?, ?, ?" +
 		")"
 
 	// run query
-	XOLog(sqlstr, up.UserID, up.Nickname)
-	res, err := db.Exec(sqlstr, up.UserID, up.Nickname)
+	XOLog(sqlstr, up.UserID, up.Nickname, up.jsCompleteIds)
+	res, err := db.Exec(sqlstr, up.UserID, up.Nickname, up.jsCompleteIds)
 	if err != nil {
 		return err
 	}
@@ -110,15 +129,21 @@ func (up *UserProperty) Update(db XODB) error {
 	if up._deleted {
 		return errors.New("update failed: marked for deletion")
 	}
+	// json fields
+	buf, err := json.Marshal(up.CompleteIds)
+	if err != nil {
+		return err
+	}
+	up.jsCompleteIds = string(buf)
 
 	// sql query
 	const sqlstr = "UPDATE `testxo`.`user_property` SET " +
-		"`user_id` = ?, `nickname` = ?" +
+		"`user_id` = ?, `nickname` = ?, `complete_ids` = ?" +
 		" WHERE `id` = ?"
 
 	// run query
-	XOLog(sqlstr, up.UserID, up.Nickname, up.ID)
-	_, err = db.Exec(sqlstr, up.UserID, up.Nickname, up.ID)
+	XOLog(sqlstr, up.UserID, up.Nickname, up.jsCompleteIds, up.ID)
+	_, err = db.Exec(sqlstr, up.UserID, up.Nickname, up.jsCompleteIds, up.ID)
 	if err != nil {
 		return err
 	}
@@ -173,7 +198,7 @@ func UserPropertiesByUserID(db XODB, userID int32) ([]*UserProperty, error) {
 
 	// sql query
 	const sqlstr = "SELECT " +
-		"`id`, `user_id`, `nickname` " +
+		"`id`, `user_id`, `nickname`, `complete_ids` " +
 		"FROM `testxo`.`user_property` " +
 		"WHERE `user_id` = ?"
 
@@ -195,12 +220,21 @@ func UserPropertiesByUserID(db XODB, userID int32) ([]*UserProperty, error) {
 		// ref init
 
 		// scan
-		err = q.Scan(&up.ID, &up.UserID, &up.Nickname)
+		err = q.Scan(&up.ID, &up.UserID, &up.Nickname, &up.jsCompleteIds)
 		if err != nil {
 			return nil, err
 		}
 
 		// ref load
+
+		// json fields
+		up.CompleteIds = []int32{}
+		if len(up.jsCompleteIds) > 0 {
+			err = json.Unmarshal([]byte(up.jsCompleteIds), up.CompleteIds)
+			if err != nil {
+				return nil, err
+			}
+		}
 
 		res = append(res, &up)
 	}
@@ -216,7 +250,7 @@ func UserPropertyByID(db XODB, id int32) (*UserProperty, error) {
 
 	// sql query
 	const sqlstr = "SELECT " +
-		"`id`, `user_id`, `nickname` " +
+		"`id`, `user_id`, `nickname`, `complete_ids` " +
 		"FROM `testxo`.`user_property` " +
 		"WHERE `id` = ?"
 
@@ -228,12 +262,19 @@ func UserPropertyByID(db XODB, id int32) (*UserProperty, error) {
 
 	// ref init
 
-	err = db.QueryRow(sqlstr, id).Scan(&up.ID, &up.UserID, &up.Nickname)
+	err = db.QueryRow(sqlstr, id).Scan(&up.ID, &up.UserID, &up.Nickname, &up.jsCompleteIds)
 	if err != nil {
 		return nil, err
 	}
 
 	// ref load
+
+	// json fields
+	up.CompleteIds = []int32{}
+	if len(up.jsCompleteIds) > 0 {
+		//no care about error
+		json.Unmarshal([]byte(up.jsCompleteIds), up.CompleteIds)
+	}
 
 	return &up, nil
 }

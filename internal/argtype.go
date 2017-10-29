@@ -126,6 +126,9 @@ type ArgType struct {
 	// KeepTablePrefix toggles keep prefix of table names.
 	KeepTablePrefix bool `arg:"--keep-table-prefix,help:keep prefix of table name"`
 
+	// IncludeTablePrefix exclude tables without prefix.
+	IncludeTablePrefix string `arg:"--include-table-prefix,help:exclude tables without prefix"`
+
 	// Path is the output path, as derived from Out.
 	Path string `arg:"-"`
 
