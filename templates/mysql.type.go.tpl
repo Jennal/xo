@@ -12,7 +12,7 @@
 {{- end }}
 type {{ .Name }} struct {
 {{- range .Fields }}
-	{{ .Name }} {{ retype .Type }} `json:"{{ jsonname . }}"` // {{ .Col.ColumnName }} {{ .Col.ColumnComment }}
+	{{ .Name }} {{ retype .Type }} `json:"{{ jsonname . }}"` // {{ .Col.ColumnName }} {{ cleancomment .Col.ColumnComment }}
 {{- end }}
 {{- if .PrimaryKey }}
 

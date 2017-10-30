@@ -43,6 +43,7 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"puretype":            a.puretype,
 		"defaultval":          a.defaultval,
 		"defaultconvval":      a.defaultconvval,
+		"cleancomment":        a.cleancomment,
 	}
 }
 
@@ -726,23 +727,13 @@ func (a *ArgType) reffillval(tableType *Type, short string, db string) string {
 			continue
 		}
 
-		if field.Ref.IsUnique {
-			result += fmt.Sprintf(`//no care about error
-%s.%s, err = %s(%s, %s.%s.%s)
-`,
-				short, field.Name,
-				field.Ref.FuncName, db,
-				short, field.Name, field.Ref.RefKeyName,
-			)
-		} else {
-			result += fmt.Sprintf(`//no care about error
+		result += fmt.Sprintf(`//no care about error
 %s.%s, _ = %s(%s, %s.%s)
 `,
-				short, field.Name,
-				field.Ref.FuncName, db,
-				short, field.Ref.SelfKeyName,
-			)
-		}
+			short, field.Name,
+			field.Ref.FuncName, db,
+			short, field.Ref.SelfKeyName,
+		)
 	}
 
 	for _, field := range tableType.ExtraFields {
@@ -750,23 +741,13 @@ func (a *ArgType) reffillval(tableType *Type, short string, db string) string {
 			continue
 		}
 
-		if field.Ref.IsUnique {
-			result += fmt.Sprintf(`//no care about error
-%s.%s, _ = %s(%s, %s.%s.%s)
-`,
-				short, field.Name,
-				field.Ref.FuncName, db,
-				short, field.Name, field.Ref.RefKeyName,
-			)
-		} else {
-			result += fmt.Sprintf(`//no care about error
+		result += fmt.Sprintf(`//no care about error
 %s.%s, _ = %s(%s, %s.%s)
 `,
-				short, field.Name,
-				field.Ref.FuncName, db,
-				short, field.Ref.SelfKeyName,
-			)
-		}
+			short, field.Name,
+			field.Ref.FuncName, db,
+			short, field.Ref.SelfKeyName,
+		)
 	}
 
 	return result
@@ -888,4 +869,8 @@ func (a *ArgType) defaultconvval(t string) string {
 	// }
 
 	return t + "{}"
+}
+
+func (a *ArgType) cleancomment(str string) string {
+	return strings.Replace(str, "\n", "\\n", -1)
 }
