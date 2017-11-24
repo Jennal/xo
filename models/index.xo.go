@@ -63,9 +63,10 @@ func MyTableIndexes(db XODB, schema string, table string) ([]*Index, error) {
 	// sql query
 	const sqlstr = `SELECT ` +
 		`DISTINCT index_name, ` +
-		`NOT non_unique AS is_unique ` +
+		`NOT non_unique AS is_unique, ` +
+		`IF(index_name = 'PRIMARY', 1, 0) AS is_primary ` +
 		`FROM information_schema.statistics ` +
-		`WHERE index_name <> 'PRIMARY' AND index_schema = ? AND table_name = ?`
+		`WHERE index_schema = ? AND table_name = ?`
 
 	// run query
 	XOLog(sqlstr, schema, table)
@@ -81,7 +82,7 @@ func MyTableIndexes(db XODB, schema string, table string) ([]*Index, error) {
 		i := Index{}
 
 		// scan
-		err = q.Scan(&i.IndexName, &i.IsUnique)
+		err = q.Scan(&i.IndexName, &i.IsUnique, &i.IsPrimary)
 		if err != nil {
 			return nil, err
 		}
