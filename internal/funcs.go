@@ -43,6 +43,7 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"puretype":            a.puretype,
 		"defaultval":          a.defaultval,
 		"defaultconvval":      a.defaultconvval,
+		"convref":             a.convref,
 		"cleancomment":        a.cleancomment,
 	}
 }
@@ -869,6 +870,14 @@ func (a *ArgType) defaultconvval(t string) string {
 	// }
 
 	return t + "{}"
+}
+
+func (a *ArgType) convref(s string, t *Field) string {
+	if strings.HasPrefix(t.Type, "*") {
+		return s + "." + t.Name
+	}
+
+	return "&" + s + "." + t.Name
 }
 
 func (a *ArgType) cleancomment(str string) string {
